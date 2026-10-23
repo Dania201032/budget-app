@@ -12,6 +12,7 @@ import '../io/export.dart';
 import '../io/sheet_import.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
+import 'lock_screen.dart';
 
 // --- Export ---
 
@@ -48,7 +49,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       );
       final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final label = period == null ? 'all_$stamp' : period.label().replaceAll(RegExp(r'[^\p{L}\p{N}\-]+', unicode: true), '_');
-      await shareExport(rows: rows, format: _format, fileBaseName: 'Budget_$label');
+      await appLock.whileInSystemScreen(() => shareExport(rows: rows, format: _format, fileBaseName: 'Budget_$label'));
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('export_failed', [e]))));
@@ -115,7 +116,7 @@ class _SheetImportScreenState extends State<SheetImportScreen> {
 
   Future<void> _pick() async {
     final state = context.read<AppState>();
-    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx']);
+    final files = await appLock.whileInSystemScreen(() => FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx']));
     if (files.isEmpty || !mounted) return;
     setState(() {
       _busy = true;
@@ -396,7 +397,7 @@ class _BackupScreenState extends State<BackupScreen> {
               ? null
               : () => _run(() async {
                     final path = await state.backup.packToCache(await state.backup.serialize());
-                    await SharePlus.instance.share(ShareParams(files: [XFile(path)], subject: tr('backup')));
+                    await appLock.whileInSystemScreen(() => SharePlus.instance.share(ShareParams(files: [XFile(path)], subject: tr('backup'))));
                   }),
           icon: const Icon(Icons.share_outlined),
           label: Text(tr('send_backup')),
@@ -407,7 +408,7 @@ class _BackupScreenState extends State<BackupScreen> {
           onPressed: _busy
               ? null
               : () async {
-                  final ok = await state.chooseBackupFolder();
+                  final ok = await appLock.whileInSystemScreen(state.chooseBackupFolder);
                   if (!ok || !context.mounted) return;
                   if (!state.backupEncrypted) await _setPassword();
                   await _run(() async {
@@ -446,7 +447,7 @@ class _BackupScreenState extends State<BackupScreen> {
 /// Pick a backup file anywhere (cloud app, Downloads…) and restore it.
 Future<void> restoreFromBackupFile(BuildContext context) async {
   final state = context.read<AppState>();
-  final bytes = await state.backup.pickFile();
+  final bytes = await appLock.whileInSystemScreen(state.backup.pickFile);
   if (bytes == null || !context.mounted) return;
   await restoreBackupBytes(context, bytes);
 }

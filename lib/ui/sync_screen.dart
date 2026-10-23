@@ -10,6 +10,7 @@ import '../sync/sync_engine.dart';
 import '../sync/sync_folder.dart';
 import '../sync/sync_service.dart';
 import 'ledger.dart';
+import 'lock_screen.dart';
 
 /// Settings → Sync: the phone and the computer share their data through a Google Drive folder.
 class SyncScreen extends StatelessWidget {
@@ -78,13 +79,13 @@ class SyncScreen extends StatelessWidget {
     final String kind;
     final String location;
     if (appIsDesktop) {
-      final path = await FilePicker.getDirectoryPath(dialogTitle: tr('sync_choose_folder'));
+      final path = await appLock.whileInSystemScreen(() => FilePicker.getDirectoryPath(dialogTitle: tr('sync_choose_folder')));
       if (path == null) return;
       folder = IoSyncFolder(path);
       kind = 'io';
       location = path;
     } else {
-      final picked = await SafSyncFolder.pick();
+      final picked = await appLock.whileInSystemScreen(SafSyncFolder.pick);
       if (picked == null) return;
       folder = SafSyncFolder(picked.$1, picked.$2);
       kind = 'saf';

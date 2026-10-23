@@ -23,6 +23,13 @@ class SyncService extends ChangeNotifier {
 
   bool get enabled => _folder != null && _cipher != null && _device != null;
   String? get folderLabel => _folder?.label;
+  String? get device => _device;
+
+  /// The folder on disk (the computer), to watch for new files; null on the phone.
+  String? get folderPath {
+    final f = _folder;
+    return f is IoSyncFolder ? f.dir.path : null;
+  }
 
   Future<void> load() async {
     final kind = await repo.setting('sync_kind');

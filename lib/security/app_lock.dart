@@ -137,9 +137,24 @@ class AppLock extends ChangeNotifier {
 
   void onPaused() => _leftAt ??= DateTime.now();
 
+  /// Leaving the app for a system screen it opened itself (the folder or file picker) is not
+  /// leaving it: no lock on coming back.
+  Future<T> whileInSystemScreen<T>(Future<T> Function() open) async {
+    _inSystemScreen++;
+    try {
+      return await open();
+    } finally {
+      _inSystemScreen--;
+      _leftAt = null;
+    }
+  }
+
+  int _inSystemScreen = 0;
+
   void onResumed() {
     final left = _leftAt;
     _leftAt = null;
+    if (_inSystemScreen > 0) return;
     if (enabled && left != null && DateTime.now().difference(left) >= lockAfter) {
       locked = true;
       notifyListeners();

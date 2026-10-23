@@ -138,11 +138,13 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver, SingleTicker
   Future<void> didChangeAppLifecycleState(AppLifecycleState s) async {
     final state = context.read<AppState>();
     if (s == AppLifecycleState.resumed) {
+      state.foreground = true;
       await state.refresh();
       _openPendingSplit();
       // What the other device changed meanwhile.
       await state.syncNow();
     } else if (s == AppLifecycleState.paused) {
+      state.foreground = false;
       await state.autoBackup();
       // Leaving the app: what was just recorded goes to the other device.
       await state.syncNow();

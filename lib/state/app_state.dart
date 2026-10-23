@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Directory, FileSystemEvent;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
@@ -168,13 +169,44 @@ class AppState extends ChangeNotifier {
     // The phone keeps the reminders even if the app was not opened for a while; refresh them.
     await syncReminders();
     if (syncAfter) unawaited(syncNow());
-    // The computer has no "back to the app" moment like a phone: it checks the folder every two minutes.
-    if (appIsDesktop) _syncTimer ??= Timer.periodic(const Duration(minutes: 2), (_) => syncNow());
+    _watchSync();
   }
 
-  Timer? _syncTimer;
-
   // --- Sync with the computer / the phone ---
+
+  Timer? _syncTimer;
+  Timer? _syncSoon;
+  StreamSubscription<FileSystemEvent>? _folderWatch;
+  bool _foreground = true;
+
+  /// While the app is open it looks at the folder every 30 s (computer) / 45 s (phone); the
+  /// computer also reacts at once when Google Drive drops another device's file into the folder.
+  void _watchSync() {
+    _syncTimer ??= Timer.periodic(Duration(seconds: appIsDesktop ? 30 : 45), (_) {
+      if (_foreground && sync.enabled) syncNow();
+    });
+    final path = sync.folderPath;
+    if (!appIsDesktop || _folderWatch != null || path == null) return;
+    try {
+      _folderWatch = Directory(path).watch().listen((e) {
+        final name = e.path.split(RegExp(r'[\\/]')).last;
+        if (name.endsWith('.bsync') && !name.contains(sync.device ?? '-')) _syncAfter(const Duration(seconds: 2));
+      });
+    } catch (e) {
+      // Some virtual drives don't report changes: the 30-second look still works.
+      AppLog.line('folder watch unavailable: $e');
+    }
+  }
+
+  /// The app is in front (phone: not paused); the periodic look runs only then.
+  set foreground(bool v) => _foreground = v;
+
+  /// A sync shortly after a change: a few edits in a row travel together.
+  void _syncAfter(Duration d) {
+    if (!sync.enabled) return;
+    _syncSoon?.cancel();
+    _syncSoon = Timer(d, syncNow);
+  }
 
   /// Sends this device's changes and takes the other's; reloads the screens if something came.
   Future<void> syncNow() async {
@@ -193,7 +225,11 @@ class AppState extends ChangeNotifier {
     return r;
   }
 
-  Future<void> disconnectSync() => sync.disconnect();
+  Future<void> disconnectSync() async {
+    await _folderWatch?.cancel();
+    _folderWatch = null;
+    await sync.disconnect();
+  }
 
   /// Pulls freshly captured payments, then reloads everything shown on screen.
   Future<void> refresh() async {
@@ -385,6 +421,8 @@ class AppState extends ChangeNotifier {
 
   void _changed() {
     _dirty = true;
+    // The other device gets it within seconds, not at the next periodic look.
+    _syncAfter(const Duration(seconds: 3));
   }
 
   // --- Navigation ---
