@@ -1,0 +1,113 @@
+# Android release, built by GitHub from this repository's code: a version tag (v0.10.2) or a manual
+# run builds the APK, signs it with the release key (repository secrets), records a build provenance
+# attestation that anyone can check, and attaches the APK to the release of that tag.
+#
+#   gh attestation verify Budget-0.10.2.apk --repo <owner>/budget-app
+name: Android release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to (re)build, e.g. v0.10.1'
+        required: true
+
+permissions:
+  contents: write       # create the release and upload the APK
+  id-token: write       # sign the attestation
+  attestations: write   # store the attestation
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.7
+          channel: stable
+          cache: true
+
+      - name: Tests
+        run: |
+          flutter pub get
+          flutter test
+
+      - name: Release key (from repository secrets, never printed)
+        env:
+          KEYSTORE_B64: ${{ secrets.BUDGET_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.BUDGET_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BUDGET_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.BUDGET_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$RUNNER_TEMP/key.properties"
+          echo "BUDGET_STORE_KEY=$RUNNER_TEMP/key.properties" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          # The developer's PC keeps Gradle's temp files on D:; not on this machine.
+          sed -i 's| -Djava.io.tmpdir=[^ ]*||; s| -Djdk.net.unixdomain.tmpdir=[^ ]*||' android/gradle.properties
+          flutter build apk --release --target-platform android-arm64
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Budget-$VERSION.apk"
+          echo "APK=dist/Budget-$VERSION.apk" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Checksums
+        run: |
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          CERT=$("$APKSIGNER" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | sed 's/.*: //')
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "CERT=$CERT" >> "$GITHUB_ENV"
+          echo "APK SHA-256: $SHA"
+          echo "Signing certificate SHA-256: $CERT"
+
+      - name: Build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ env.APK }}
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sed -e "s/{VERSION}/$VERSION/g" -e "s/{SHA}/$SHA/g" -e "s/{CERT}/$CERT/g" \
+              -e "s|{REPO}|$GITHUB_REPOSITORY|g" -e "s|{RUN}|$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID|g" \
+              .github/release-notes.md > "$RUNNER_TEMP/notes.md"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # A rebuild replaces the files and the notes of the existing release.
+            for a in $(gh release view "$TAG" --json assets --jq '.assets[].name'); do gh release delete-asset "$TAG" "$a" -y; done
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" --title "Бюджет $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          gh release upload "$TAG" "$APK"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/key.properties"

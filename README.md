@@ -16,7 +16,19 @@
 3. Для автозаписи трат: Настройки → «Автозапись трат». На Android 13+ для приложений, установленных из файла,
    нужно один раз разрешить «Ограниченные настройки» — приложение покажет, как.
 
-У каждого выпуска указана контрольная сумма SHA-256: она совпадает у скачанного файла, если его никто не подменил.
+### Как убедиться, что APK собран из этого кода
+
+APK собирает **GitHub**, а не разработчик: при выпуске версии сервер GitHub берёт код этого репозитория, запускает тесты,
+собирает и подписывает приложение ([как это устроено](.github/workflows/android-release.yml), журналы всех сборок —
+во вкладке [Actions](../../actions)). К каждому файлу GitHub выдаёт подписанное подтверждение происхождения, подделать
+которое разработчик не может. Проверка одной командой ([GitHub CLI](https://cli.github.com)):
+
+```
+gh attestation verify Budget-0.10.1.apk --repo demintsev03082004-collab/budget-app
+```
+
+Ответ «Verification succeeded» означает: этот файл собран GitHub из кода этого репозитория. Там же, в описании выпуска,
+указаны контрольная сумма SHA-256 файла и отпечаток сертификата подписи.
 
 ## Где хранятся данные
 
@@ -84,7 +96,12 @@ automatic recording of Alipay, WeChat and bank payments (Russia, Kazakhstan, Ger
 This repository is public so that anyone can check for themselves: **the app does not collect or send your data.**
 
 **[⬇ Download the latest Android APK](../../releases/latest)** (`Budget-….apk` under "Assets"). It starts empty: pick a
-country and a language on the first start. Each release lists the file's SHA-256 checksum.
+country and a language on the first start.
+
+The APK is **built by GitHub from this repository's code** ([workflow](.github/workflows/android-release.yml),
+[build logs](../../actions)), not on the developer's computer, and every file gets a signed build provenance
+attestation. Check it with [GitHub CLI](https://cli.github.com):
+`gh attestation verify Budget-0.10.1.apk --repo demintsev03082004-collab/budget-app` → "Verification succeeded".
 
 - **Data stays on the phone.** No server, no accounts, no ads, no analytics libraries ([`pubspec.yaml`](pubspec.yaml)).
 - **The database is encrypted** (SQLCipher, AES-256) with a random key kept in the Android Keystore.
