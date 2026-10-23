@@ -1,0 +1,53 @@
+name: budget_app
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.10.1+2040
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  archive: ^4.5.1
+  crypto: ^3.0.7
+  file_picker: ^13.1.0
+  fl_chart: ^1.2.0
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_secure_storage: 11.2.0
+  http: ^1.6.0
+  intl: ^0.20.3
+  local_auth: 3.0.2
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  provider: ^6.1.5+1
+  share_plus: ^13.3.1
+  sqflite_sqlcipher: 3.4.1
+  xml: ^7.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.3
+
+flutter:
+  uses-material-design: true
+
+  # IBM Plex (SIL Open Font License, assets/fonts/OFL.txt). Bundled: Google Fonts is unreachable in China.
+  fonts:
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600

@@ -1,0 +1,78 @@
+/// ISO 4217 currencies offered in the app (all are supported by the rates source).
+class CurrencyInfo {
+  final String code;
+  final String name;
+  final String symbol;
+  const CurrencyInfo(this.code, this.name, this.symbol);
+}
+
+const currencies = <CurrencyInfo>[
+  CurrencyInfo('CNY', 'Китайский юань', '¥'),
+  CurrencyInfo('RUB', 'Российский рубль', '₽'),
+  CurrencyInfo('USD', 'Доллар США', '\$'),
+  CurrencyInfo('EUR', 'Евро', '€'),
+  CurrencyInfo('GBP', 'Фунт стерлингов', '£'),
+  CurrencyInfo('JPY', 'Японская иена', 'JP¥'),
+  CurrencyInfo('KRW', 'Южнокорейская вона', '₩'),
+  CurrencyInfo('HKD', 'Гонконгский доллар', 'HK\$'),
+  CurrencyInfo('TWD', 'Новый тайваньский доллар', 'NT\$'),
+  CurrencyInfo('MOP', 'Патака Макао', 'MOP'),
+  CurrencyInfo('SGD', 'Сингапурский доллар', 'S\$'),
+  CurrencyInfo('THB', 'Тайский бат', '฿'),
+  CurrencyInfo('VND', 'Вьетнамский донг', '₫'),
+  CurrencyInfo('MYR', 'Малайзийский ринггит', 'RM'),
+  CurrencyInfo('IDR', 'Индонезийская рупия', 'Rp'),
+  CurrencyInfo('PHP', 'Филиппинское песо', '₱'),
+  CurrencyInfo('INR', 'Индийская рупия', '₹'),
+  CurrencyInfo('KZT', 'Казахстанский тенге', '₸'),
+  CurrencyInfo('UZS', 'Узбекский сум', 'сўм'),
+  CurrencyInfo('KGS', 'Киргизский сом', 'сом'),
+  CurrencyInfo('TJS', 'Таджикский сомони', 'SM'),
+  CurrencyInfo('TMT', 'Туркменский манат', 'TMT'),
+  CurrencyInfo('AZN', 'Азербайджанский манат', '₼'),
+  CurrencyInfo('AMD', 'Армянский драм', '֏'),
+  CurrencyInfo('GEL', 'Грузинский лари', '₾'),
+  CurrencyInfo('BYN', 'Белорусский рубль', 'Br'),
+  CurrencyInfo('UAH', 'Украинская гривна', '₴'),
+  CurrencyInfo('MDL', 'Молдавский лей', 'L'),
+  CurrencyInfo('MNT', 'Монгольский тугрик', '₮'),
+  CurrencyInfo('TRY', 'Турецкая лира', '₺'),
+  CurrencyInfo('AED', 'Дирхам ОАЭ', 'AED'),
+  CurrencyInfo('SAR', 'Саудовский риял', 'SAR'),
+  CurrencyInfo('QAR', 'Катарский риал', 'QAR'),
+  CurrencyInfo('ILS', 'Израильский шекель', '₪'),
+  CurrencyInfo('EGP', 'Египетский фунт', 'E£'),
+  CurrencyInfo('CHF', 'Швейцарский франк', 'CHF'),
+  CurrencyInfo('PLN', 'Польский злотый', 'zł'),
+  CurrencyInfo('CZK', 'Чешская крона', 'Kč'),
+  CurrencyInfo('HUF', 'Венгерский форинт', 'Ft'),
+  CurrencyInfo('RON', 'Румынский лей', 'lei'),
+  CurrencyInfo('BGN', 'Болгарский лев', 'лв'),
+  CurrencyInfo('RSD', 'Сербский динар', 'дин'),
+  CurrencyInfo('SEK', 'Шведская крона', 'kr'),
+  CurrencyInfo('NOK', 'Норвежская крона', 'kr'),
+  CurrencyInfo('DKK', 'Датская крона', 'kr'),
+  CurrencyInfo('ISK', 'Исландская крона', 'kr'),
+  CurrencyInfo('CAD', 'Канадский доллар', 'C\$'),
+  CurrencyInfo('AUD', 'Австралийский доллар', 'A\$'),
+  CurrencyInfo('NZD', 'Новозеландский доллар', 'NZ\$'),
+  CurrencyInfo('MXN', 'Мексиканское песо', 'MX\$'),
+  CurrencyInfo('BRL', 'Бразильский реал', 'R\$'),
+  CurrencyInfo('ARS', 'Аргентинское песо', 'AR\$'),
+  CurrencyInfo('CLP', 'Чилийское песо', 'CL\$'),
+  CurrencyInfo('COP', 'Колумбийское песо', 'CO\$'),
+  CurrencyInfo('PEN', 'Перуанский соль', 'S/'),
+  CurrencyInfo('ZAR', 'Южноафриканский рэнд', 'R'),
+  CurrencyInfo('NGN', 'Нигерийская найра', '₦'),
+  CurrencyInfo('KES', 'Кенийский шиллинг', 'KSh'),
+  CurrencyInfo('MAD', 'Марокканский дирхам', 'MAD'),
+  CurrencyInfo('PKR', 'Пакистанская рупия', '₨'),
+  CurrencyInfo('BDT', 'Бангладешская така', '৳'),
+  CurrencyInfo('LKR', 'Шри-ланкийская рупия', 'Rs'),
+  CurrencyInfo('NPR', 'Непальская рупия', 'Rs'),
+  CurrencyInfo('IRR', 'Иранский риал', '﷼'),
+];
+
+final currencyByCode = {for (final c in currencies) c.code: c};
+
+String currencySymbol(String code) => currencyByCode[code]?.symbol ?? code;

@@ -1,0 +1,17 @@
+Copyright (c) 2026 the author of «Бюджет» (Budget). All rights reserved.
+
+The source code in this repository is published only so that users can review and verify what the
+application does with their data.
+
+You may view and read the code, and build it for your own personal review.
+
+Without the author's prior written permission you may NOT copy, modify, merge, publish, distribute,
+sublicense or sell the code or any part of it, or applications built from it.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL
+THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+---
+
+Bundled fonts (assets/fonts, IBM Plex) are licensed under the SIL Open Font License 1.1, see
+assets/fonts/OFL.txt. Third-party libraries keep their own licenses.

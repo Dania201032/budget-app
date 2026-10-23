@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">预算</string>
+    <string name="accessibility_label">预算：自动记账</string>
+    <string name="listener_label">预算：付款通知</string>
+    <string name="accessibility_description">自动记账：应用只读取支付宝、微信和银行应用中的支付结果页面及交易列表（金额、日期和对方），并把交易保存在手机上。不会读取聊天、密码和其他应用，不会替你点击任何内容，也不会向网络发送任何数据。</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">月历</string>
+    <string name="widget_calendar_desc">本月每天是否超出限额，以及剩余预算</string>
+    <string name="widget_summary_name">概要</string>
+    <string name="widget_summary_desc">预算支出、剩余、每天可花与进度</string>
+    <string name="widget_today_name">今天可花</string>
+    <string name="widget_today_desc">今天还可以花多少</string>
+    <string name="widget_runway_name">可用到</string>
+    <string name="widget_runway_desc">按当前支出，钱可以用到哪天</string>
+    <string name="widget_quick_name">快速记账</string>
+    <string name="widget_quick_desc">一键记账，常用分类</string>
+    <string name="widget_over">今天超支</string>
+    <string name="widget_open_app">打开应用</string>
+    <string name="widget_budget_off">预算未开启</string>
+    <string name="widget_of">/</string>
+    <string name="widget_spent">支出</string>
+    <string name="widget_left">剩余</string>
+    <string name="widget_per_day">每天</string>
+    <string name="widget_pace">进度</string>
+    <string name="widget_income">收入</string>
+    <string name="widget_record">记账</string>
+</resources>

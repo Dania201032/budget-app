@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Budget</string>
+    <string name="accessibility_label">Budget: automatische Erfassung</string>
+    <string name="listener_label">Budget: Zahlungsbenachrichtigungen</string>
+    <string name="accessibility_description">Automatische Erfassung von Ausgaben: Die App liest nur Zahlungsergebnis-Bildschirme und Umsatzlisten in Banking-Apps, Alipay und WeChat (Betrag, Datum und Empfänger) und speichert die Buchungen auf dem Handy. Chats, Passwörter und andere Apps werden nicht gelesen, nichts wird für Sie angetippt, nichts wird ins Internet gesendet.</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">Monatskalender</string>
+    <string name="widget_calendar_desc">Tage des Monats: im Limit oder darüber, und das Restbudget</string>
+    <string name="widget_summary_name">Übersicht</string>
+    <string name="widget_summary_desc">Ausgegeben vom Budget, Rest, pro Tag und Tempo</string>
+    <string name="widget_today_name">Heute übrig</string>
+    <string name="widget_today_desc">Wie viel Sie heute noch ausgeben können</string>
+    <string name="widget_runway_name">Reicht bis</string>
+    <string name="widget_runway_desc">Bis wann Ihr Geld bei den jetzigen Ausgaben reicht</string>
+    <string name="widget_quick_name">Schnell erfassen</string>
+    <string name="widget_quick_desc">Eine Buchung mit einem Tippen erfassen, mit häufiger Kategorie</string>
+    <string name="widget_over">Heute über dem Limit</string>
+    <string name="widget_open_app">App öffnen</string>
+    <string name="widget_budget_off">Budget ist aus</string>
+    <string name="widget_of">von</string>
+    <string name="widget_spent">Ausgaben</string>
+    <string name="widget_left">übrig</string>
+    <string name="widget_per_day">Pro Tag</string>
+    <string name="widget_pace">Tempo</string>
+    <string name="widget_income">Einnahmen</string>
+    <string name="widget_record">Erfassen</string>
+</resources>

@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The INTERNET permission is required for development. Specifically,
+         the Flutter tool needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application>
+        <!-- Debug builds only: renders the widget pickers' preview images on request from adb
+             (`adb shell am broadcast -a app.budget.widget.RENDER_PREVIEWS -n app.budget.budget_app/.widgets.WidgetPreviewReceiver`).
+             Release builds don't declare it, so no other app can trigger it. -->
+        <receiver
+            android:name=".widgets.WidgetPreviewReceiver"
+            android:exported="true" />
+    </application>
+</manifest>

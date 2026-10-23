@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Budget</string>
+    <string name="accessibility_label">Budget: automatic recording</string>
+    <string name="listener_label">Budget: payment notifications</string>
+    <string name="accessibility_description">Automatic expense recording: the app reads only payment result screens and operation lists in Alipay, WeChat and bank apps (amount, date and payee) and saves the operations on the phone. Chats, passwords and other apps are not read, nothing is tapped for you, nothing is sent to the internet.</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">Month calendar</string>
+    <string name="widget_calendar_desc">Days of the month: within the limit or over it, and the budget left</string>
+    <string name="widget_summary_name">Summary</string>
+    <string name="widget_summary_desc">Spent of the budget, left, per day and pace</string>
+    <string name="widget_today_name">Left today</string>
+    <string name="widget_today_desc">How much you can still spend today</string>
+    <string name="widget_runway_name">Lasts until</string>
+    <string name="widget_runway_desc">The date your money lasts until at the current spending</string>
+    <string name="widget_quick_name">Quick add</string>
+    <string name="widget_quick_desc">Add a transaction in one tap, with a frequent category</string>
+    <string name="widget_over">Over today</string>
+    <string name="widget_open_app">Open the app</string>
+    <string name="widget_budget_off">Budget is off</string>
+    <string name="widget_of">of</string>
+    <string name="widget_spent">Spent</string>
+    <string name="widget_left">left</string>
+    <string name="widget_per_day">Per day</string>
+    <string name="widget_pace">Pace</string>
+    <string name="widget_income">Income</string>
+    <string name="widget_record">Add</string>
+</resources>

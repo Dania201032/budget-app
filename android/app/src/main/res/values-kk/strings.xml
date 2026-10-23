@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Бюджет</string>
+    <string name="accessibility_label">Бюджет: шығысты автожазу</string>
+    <string name="listener_label">Бюджет: төлем хабарламалары</string>
+    <string name="accessibility_description">Шығысты автожазу: қосымша Alipay, WeChat және банк қосымшаларындағы төлем нәтижесі экрандары мен операциялар тізімін (сома, күн және алушы) ғана оқып, операцияларды телефонда сақтайды. Хат алмасу, құпиясөздер мен басқа қосымшалар оқылмайды, сіз үшін ештеңе басылмайды және интернетке ештеңе жіберілмейді.</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">Ай күнтізбесі</string>
+    <string name="widget_calendar_desc">Айдың күндері: шекте ме, асты ма, және бюджет қалдығы</string>
+    <string name="widget_summary_name">Шолу</string>
+    <string name="widget_summary_desc">Бюджеттен шығыс, қалдық, күніне және қарқын</string>
+    <string name="widget_today_name">Бүгін болады</string>
+    <string name="widget_today_desc">Бүгін тағы қанша жұмсауға болады</string>
+    <string name="widget_runway_name">Жетеді</string>
+    <string name="widget_runway_desc">Қазіргі шығыспен ақша қай күнге дейін жетеді</string>
+    <string name="widget_quick_name">Жылдам жазу</string>
+    <string name="widget_quick_desc">Бір түртумен жазу, жиі санатпен</string>
+    <string name="widget_over">Шектен асты</string>
+    <string name="widget_open_app">Қолданбаны ашыңыз</string>
+    <string name="widget_budget_off">Бюджет өшірулі</string>
+    <string name="widget_of">ішінен</string>
+    <string name="widget_spent">Шығыс</string>
+    <string name="widget_left">қалдық</string>
+    <string name="widget_per_day">Күніне</string>
+    <string name="widget_pace">Қарқын</string>
+    <string name="widget_income">Кіріс</string>
+    <string name="widget_record">Жазу</string>
+</resources>

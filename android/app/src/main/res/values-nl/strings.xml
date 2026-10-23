@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Budget</string>
+    <string name="accessibility_label">Budget: automatisch vastleggen</string>
+    <string name="listener_label">Budget: betaalmeldingen</string>
+    <string name="accessibility_description">Automatisch uitgaven vastleggen: de app leest alleen schermen met het betaalresultaat en transactieoverzichten in bank-apps, Alipay en WeChat (bedrag, datum en ontvanger) en bewaart de transacties op de telefoon. Chats, wachtwoorden en andere apps worden niet gelezen, er wordt niets voor u aangetikt en niets naar internet gestuurd.</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">Maandkalender</string>
+    <string name="widget_calendar_desc">Dagen van de maand: binnen de limiet of erboven, en het resterende budget</string>
+    <string name="widget_summary_name">Overzicht</string>
+    <string name="widget_summary_desc">Uitgegeven van het budget, over, per dag en tempo</string>
+    <string name="widget_today_name">Vandaag over</string>
+    <string name="widget_today_desc">Hoeveel u vandaag nog kunt uitgeven</string>
+    <string name="widget_runway_name">Genoeg tot</string>
+    <string name="widget_runway_desc">Tot welke datum uw geld genoeg is bij de huidige uitgaven</string>
+    <string name="widget_quick_name">Snel toevoegen</string>
+    <string name="widget_quick_desc">Een transactie met één tik toevoegen, met een veelgebruikte categorie</string>
+    <string name="widget_over">Vandaag over de limiet</string>
+    <string name="widget_open_app">Open de app</string>
+    <string name="widget_budget_off">Budget staat uit</string>
+    <string name="widget_of">van</string>
+    <string name="widget_spent">Uitgaven</string>
+    <string name="widget_left">over</string>
+    <string name="widget_per_day">Per dag</string>
+    <string name="widget_pace">Tempo</string>
+    <string name="widget_income">Inkomsten</string>
+    <string name="widget_record">Toevoegen</string>
+</resources>

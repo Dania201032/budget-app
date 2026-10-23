@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Бюджет</string>
+    <string name="accessibility_label">Бюджет: автозапись трат</string>
+    <string name="listener_label">Бюджет: уведомления о платежах</string>
+    <string name="accessibility_description">Автозапись трат: приложение читает только экраны результата оплаты и списки операций в Alipay, WeChat и приложениях банков (сумму, дату и получателя) и сохраняет операции на телефоне. Переписка, пароли и другие приложения не читаются, ничего не нажимается за вас и не отправляется в интернет.</string>
+    <!-- Home-screen widgets -->
+    <string name="widget_calendar_name">Календарь месяца</string>
+    <string name="widget_calendar_desc">Дни месяца: в лимите или сверх, и остаток бюджета</string>
+    <string name="widget_summary_name">Сводка</string>
+    <string name="widget_summary_desc">Расходы из бюджета, остаток, в день и темп</string>
+    <string name="widget_today_name">Сегодня можно</string>
+    <string name="widget_today_desc">Сколько ещё можно потратить сегодня</string>
+    <string name="widget_runway_name">Хватит до</string>
+    <string name="widget_runway_desc">До какой даты хватит денег при нынешних тратах</string>
+    <string name="widget_quick_name">Быстрая запись</string>
+    <string name="widget_quick_desc">Запись операции в одно касание, с частой категорией</string>
+    <string name="widget_over">Сверх лимита</string>
+    <string name="widget_open_app">Откройте приложение</string>
+    <string name="widget_budget_off">Бюджет выключен</string>
+    <string name="widget_of">из</string>
+    <string name="widget_spent">Расходы</string>
+    <string name="widget_left">остаток</string>
+    <string name="widget_per_day">В день</string>
+    <string name="widget_pace">Темп</string>
+    <string name="widget_income">Доходы</string>
+    <string name="widget_record">Запись</string>
+</resources>
