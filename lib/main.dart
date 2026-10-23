@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -9,6 +11,7 @@ import 'data/rates.dart';
 import 'data/repository.dart';
 import 'io/home_widgets.dart';
 import 'l10n/strings.dart';
+import 'platform.dart';
 import 'state/app_state.dart';
 import 'ui/analytics_screen.dart';
 import 'ui/home_screen.dart';
@@ -25,6 +28,7 @@ import 'ui/txn_editor.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  appIsDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   await initializeDateFormatting();
   final repo = Repository(await openAppDatabase());
   // Before the user picks a language: the phone's, if supported.
@@ -120,8 +124,12 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver, SingleTicker
     if (s == AppLifecycleState.resumed) {
       await state.refresh();
       _openPendingSplit();
+      // What the other device changed meanwhile.
+      await state.syncNow();
     } else if (s == AppLifecycleState.paused) {
       await state.autoBackup();
+      // Leaving the app: what was just recorded goes to the other device.
+      await state.syncNow();
     }
   }
 
@@ -154,16 +162,61 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver, SingleTicker
     }
   }
 
+  static const _tabs = [
+    (LedgerGlyph.home, 'nav_home'),
+    (LedgerGlyph.overview, 'nav_overview'),
+    (LedgerGlyph.analytics, 'nav_analytics'),
+    (LedgerGlyph.money, 'nav_money'),
+    (LedgerGlyph.settings, 'nav_settings'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: FadeTransition(
-        opacity: _opacity,
-        child: IndexedStack(
-          index: _tab,
-          children: const [HomeScreen(), OverviewScreen(), AnalyticsScreen(), MoneyScreen(), SettingsScreen()],
-        ),
+    final body = FadeTransition(
+      opacity: _opacity,
+      child: IndexedStack(
+        index: _tab,
+        children: const [HomeScreen(), OverviewScreen(), AnalyticsScreen(), MoneyScreen(), SettingsScreen()],
       ),
+    );
+    // A computer window (or a tablet): the tabs on the left, the content no wider than a page.
+    if (MediaQuery.sizeOf(context).width >= 840) {
+      final ink = Ledger.inkOf(context);
+      final muted = Ledger.mutedOf(context);
+      return Scaffold(
+        body: Row(children: [
+          NavigationRail(
+            selectedIndex: _tab,
+            onDestinationSelected: _go,
+            labelType: NavigationRailLabelType.all,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            indicatorColor: Colors.transparent,
+            minWidth: 96,
+            selectedLabelTextStyle: mono(size: 11.5, weight: FontWeight.w600, color: ink)
+                .copyWith(decoration: TextDecoration.underline, decorationColor: Ledger.accentOf(context), decorationThickness: 2),
+            unselectedLabelTextStyle: mono(size: 11.5, weight: FontWeight.w400, color: muted),
+            destinations: [
+              for (final (glyph, label) in _tabs)
+                NavigationRailDestination(
+                  icon: LedgerIcon(glyph),
+                  selectedIcon: LedgerIcon(glyph, selected: true),
+                  // The rail has room for the full word ("Einstellungen").
+                  label: Text(tr(label == 'nav_settings' ? 'settings' : label)),
+                ),
+            ],
+          ),
+          VerticalDivider(width: 1, thickness: 1, color: ink),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 980), child: body),
+            ),
+          ),
+        ]),
+      );
+    }
+    return Scaffold(
+      body: body,
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: Ledger.inkOf(context))),
@@ -172,13 +225,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver, SingleTicker
           selectedIndex: _tab,
           onDestinationSelected: _go,
           destinations: [
-            for (final (glyph, label) in [
-              (LedgerGlyph.home, 'nav_home'),
-              (LedgerGlyph.overview, 'nav_overview'),
-              (LedgerGlyph.analytics, 'nav_analytics'),
-              (LedgerGlyph.money, 'nav_money'),
-              (LedgerGlyph.settings, 'nav_settings'),
-            ])
+            for (final (glyph, label) in _tabs)
               NavigationDestination(
                 icon: LedgerIcon(glyph),
                 selectedIcon: LedgerIcon(glyph, selected: true),

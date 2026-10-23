@@ -19,7 +19,7 @@
 ### Как убедиться, что APK собран из этого кода
 
 APK собирает **GitHub**, а не разработчик: при выпуске версии сервер GitHub берёт код этого репозитория, запускает тесты,
-собирает и подписывает приложение ([как это устроено](.github/workflows/android-release.yml), журналы всех сборок —
+собирает и подписывает приложение ([как это устроено](.github/workflows/release.yml), журналы всех сборок —
 во вкладке [Actions](../../actions)). К каждому файлу GitHub выдаёт подписанное подтверждение происхождения, подделать
 которое разработчик не может. Проверка одной командой ([GitHub CLI](https://cli.github.com)):
 
@@ -98,7 +98,7 @@ This repository is public so that anyone can check for themselves: **the app doe
 **[⬇ Download the latest Android APK](../../releases/latest)** (`Budget-….apk` under "Assets"). It starts empty: pick a
 country and a language on the first start.
 
-The APK is **built by GitHub from this repository's code** ([workflow](.github/workflows/android-release.yml),
+The APK is **built by GitHub from this repository's code** ([workflow](.github/workflows/release.yml),
 [build logs](../../actions)), not on the developer's computer, and every file gets a signed build provenance
 attestation. Check it with [GitHub CLI](https://cli.github.com):
 `gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app` → "Verification succeeded".

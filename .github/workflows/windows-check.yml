@@ -1,0 +1,38 @@
+# A trial build of the Windows app, started by hand: the zip is kept as a workflow artifact for a
+# week (nothing is published). Releases are built by release.yml.
+name: Windows trial build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.7
+          channel: stable
+          cache: true
+
+      - name: Build
+        run: |
+          flutter pub get
+          flutter build windows --release
+          APP=build/windows/x64/runner/Release
+          for dll in msvcp140.dll vcruntime140.dll vcruntime140_1.dll; do cp "/c/Windows/System32/$dll" "$APP/"; done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Budget-windows
+          path: build/windows/x64/runner/Release
+          retention-days: 7

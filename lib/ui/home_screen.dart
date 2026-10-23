@@ -7,6 +7,7 @@ import '../domain/currencies.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
 import '../l10n/strings.dart';
+import '../platform.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
 import 'motion.dart';
@@ -38,7 +39,7 @@ class HomeScreen extends StatelessWidget {
       byDay.putIfAbsent(DateTime(t.time.year, t.time.month, t.time.day), () => []).add(t);
     }
     final items = <Widget>[
-      if (!state.captureStatus.allOn) const _CaptureSetupBanner(),
+      if (!state.captureStatus.allOn && !appIsDesktop) const _CaptureSetupBanner(),
       if (state.reviewQueue.isNotEmpty) _ReviewBanner(count: state.reviewQueue.length),
       if (state.staleAccounts.isNotEmpty && !state.staleHintHidden) _StaleBanner(accounts: state.staleAccounts),
       if (state.recurringSoon.isNotEmpty) _SoonBlock(items: state.recurringSoon),

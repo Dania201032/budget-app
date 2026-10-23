@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
@@ -15,6 +16,10 @@ import '../io/backup.dart';
 import '../io/home_widgets.dart';
 import '../io/sheet_import.dart';
 import '../l10n/strings.dart';
+import '../platform.dart';
+import '../sync/sync_engine.dart';
+import '../sync/sync_folder.dart';
+import '../sync/sync_service.dart';
 
 class AppState extends ChangeNotifier {
   final Repository repo;
@@ -23,7 +28,13 @@ class AppState extends ChangeNotifier {
   final BackupService backup;
   final CaptureImporter _importer;
 
-  AppState(this.repo, this.capture, this.rates) : _importer = CaptureImporter(repo), backup = BackupService(repo) {
+  /// Phone ⇄ computer sync through a cloud folder (off until set up in Settings).
+  final SyncService sync;
+
+  AppState(this.repo, this.capture, this.rates)
+      : _importer = CaptureImporter(repo),
+        backup = BackupService(repo),
+        sync = SyncService(repo) {
     // Debts paid back in another currency are matched by the rate.
     repo.convert = rates.convert;
   }
@@ -117,7 +128,7 @@ class AppState extends ChangeNotifier {
 
   // --- Lifecycle ---
 
-  Future<void> init() async {
+  Future<void> init({bool syncAfter = true}) async {
     await repo.applyLedgerPalette();
     currentLanguage = await repo.setting('language') ?? 'ru';
     onboarded = await repo.setting('onboarded') == '1';
@@ -130,6 +141,7 @@ class AppState extends ChangeNotifier {
     staleHintHidden = staleUntil != null && staleUntil.isAfter(DateTime.now());
     backupUri = await repo.setting('backup_uri');
     backupFolder = await repo.setting('backup_folder');
+    await sync.load();
     await _migrateBackupPassword();
     runwayConfig = RunwayConfig.fromJsonString(await repo.setting('runway_config'));
     overviewView = await repo.setting('overview_view') ?? 'list';
@@ -151,7 +163,33 @@ class AppState extends ChangeNotifier {
     await refresh();
     // The phone keeps the reminders even if the app was not opened for a while; refresh them.
     await syncReminders();
+    if (syncAfter) unawaited(syncNow());
+    // The computer has no "back to the app" moment like a phone: it checks the folder every two minutes.
+    if (appIsDesktop) _syncTimer ??= Timer.periodic(const Duration(minutes: 2), (_) => syncNow());
   }
+
+  Timer? _syncTimer;
+
+  // --- Sync with the computer / the phone ---
+
+  /// Sends this device's changes and takes the other's; reloads the screens if something came.
+  Future<void> syncNow() async {
+    final r = await sync.sync();
+    if (r != null && r.received > 0) {
+      _budgets.clear();
+      await init(syncAfter: false);
+    }
+  }
+
+  /// Joins sync through [folder] (or starts it, on the first device). Throws [WrongSyncPassword].
+  Future<SyncReport> connectSync(SyncFolder folder, String password, {required String kind, required String location}) async {
+    final r = await sync.connect(folder, password, kind: kind, location: location);
+    _budgets.clear();
+    await init(syncAfter: false);
+    return r;
+  }
+
+  Future<void> disconnectSync() => sync.disconnect();
 
   /// Pulls freshly captured payments, then reloads everything shown on screen.
   Future<void> refresh() async {

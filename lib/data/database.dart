@@ -3,12 +3,16 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' show databaseFactoryFfi, sqfliteFfiInit;
 import 'package:sqflite_sqlcipher/sqflite.dart' as cipher;
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
+import '../platform.dart';
 import '../security/secure_store.dart';
+import '../sync/sync_tables.dart';
 
-const schemaVersion = 8;
+const schemaVersion = 9;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
@@ -28,6 +32,7 @@ Future<void> _create(Database db, int _) async {
   await _migrateV6(db);
   await _migrateV7(db);
   await _migrateV8(db);
+  await migrateSyncV9(db);
 }
 
 Future<void> _upgrade(Database db, int from, int to) async {
@@ -38,6 +43,8 @@ Future<void> _upgrade(Database db, int from, int to) async {
   if (from < 6) await _migrateV6(db);
   if (from < 7) await _migrateV7(db);
   if (from < 8) await _migrateV8(db);
+  // v9: sync between the phone and the computer (uids, change log).
+  if (from < 9) await migrateSyncV9(db);
 }
 
 /// The app's database. On the phone it is encrypted (SQLCipher, AES-256) with a random key kept
@@ -50,6 +57,7 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
       options: OpenDatabaseOptions(version: schemaVersion, onConfigure: _configure, onCreate: _create, onUpgrade: _upgrade),
     );
   }
+  if (appIsDesktop) return openDesktopDatabase(path: path);
   final dbPath = path ?? p.join(await cipher.getDatabasesPath(), 'budget.db');
   final key = await _databaseKey();
   await _encryptIfPlain(dbPath, key);
@@ -65,6 +73,27 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
     if (File(dbPath).existsSync()) File(dbPath).renameSync(aside);
     return open();
   }
+}
+
+/// The computer's database (Windows): SQLite3MultipleCiphers through FFI, encrypted with the same kind
+/// of random key, kept in the system's credential store. [key] is given by tests.
+Future<Database> openDesktopDatabase({String? path, String? key}) async {
+  sqfliteFfiInit();
+  final dbPath = path ?? p.join((await getApplicationSupportDirectory()).path, 'budget.db');
+  final dbKey = key ?? await _databaseKey();
+  return databaseFactoryFfi.openDatabase(
+    dbPath,
+    options: OpenDatabaseOptions(
+      version: schemaVersion,
+      // The key must come before anything else reads the file.
+      onConfigure: (db) async {
+        await db.execute("PRAGMA key = '$dbKey'");
+        await _configure(db);
+      },
+      onCreate: _create,
+      onUpgrade: _upgrade,
+    ),
+  );
 }
 
 /// A random 256-bit key, made on first start and kept in the Keystore / Keychain (this device only).

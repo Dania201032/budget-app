@@ -9,6 +9,7 @@ import '../domain/currencies.dart';
 import '../domain/money.dart';
 import '../io/home_widgets.dart';
 import '../l10n/strings.dart';
+import '../platform.dart';
 import '../state/app_state.dart';
 import 'bank_log_screen.dart';
 import 'data_screens.dart';
@@ -17,6 +18,7 @@ import 'ledger.dart';
 import 'lock_screen.dart';
 import 'onboarding.dart';
 import 'recurring_screen.dart';
+import 'sync_screen.dart';
 import 'widgets.dart';
 
 /// Currency name in the app language (full names exist in Russian; other languages show the code).
@@ -79,7 +81,9 @@ class SettingsScreen extends StatelessWidget {
           },
         ),
         LedgerSection(tr('settings_recording')),
-        LedgerTile(
+        // Automatic recording reads the phone's screens and notifications: not on the computer.
+        if (!appIsDesktop)
+          LedgerTile(
           tr('capture'),
           hint: status.allOn ? null : tr('capture_setup_needed'),
           value: status.allOn ? tr('capture_on') : '!',
@@ -100,6 +104,15 @@ class SettingsScreen extends StatelessWidget {
         ),
         LedgerSection(tr('settings_data')),
         LedgerTile(
+          tr('sync'),
+          hint: tr(appIsDesktop ? 'sync_sub_desktop' : 'sync_sub_phone'),
+          value: tr(state.sync.enabled ? 'lock_value_on' : 'lock_value_off'),
+          valueColor: state.sync.enabled ? good : null,
+          onTap: () => push(const SyncScreen()),
+        ),
+        // The computer keeps its copy through sync; backups to a folder are the phone's.
+        if (!appIsDesktop)
+          LedgerTile(
           tr('backup'),
           // Off: a short value, the explanation under the label (it doesn't fit as a value).
           hint: state.backupConfigured ? null : tr('backup_off'),

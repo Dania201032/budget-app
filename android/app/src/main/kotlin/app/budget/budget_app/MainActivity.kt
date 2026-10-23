@@ -13,6 +13,7 @@ import android.provider.Settings
 import app.budget.budget_app.backup.BackupCrypto
 import app.budget.budget_app.backup.BackupKeys
 import app.budget.budget_app.backup.BackupStore
+import app.budget.budget_app.backup.SyncFolderStore
 import app.budget.budget_app.capture.BankLog
 import app.budget.budget_app.capture.CaptureInbox
 import app.budget.budget_app.capture.PaymentAccessibilityService
@@ -161,6 +162,26 @@ class MainActivity : FlutterFragmentActivity() {
                 "unpack" -> background(result) {
                     BackupCrypto.unpack(call.argument<ByteArray>("bytes")!!, call.argument<String>("password"))
                 }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Sync with the computer through a cloud folder (lib/sync/sync_folder.dart).
+        MethodChannel(messenger, "budget/sync").setMethodCallHandler { call, result ->
+            val tree = call.argument<String>("uri")?.let(Uri::parse)
+            when (call.method) {
+                "pickFolder" -> {
+                    pendingResult = result
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQ_PICK_FOLDER)
+                }
+                "list" -> background(result) { SyncFolderStore.list(this, tree!!) }
+                "read" -> background(result) { SyncFolderStore.read(this, tree!!, call.argument<String>("name")!!) }
+                "write" -> background(result) {
+                    SyncFolderStore.write(this, tree!!, call.argument<String>("name")!!, call.argument<ByteArray>("bytes")!!)
+                    null
+                }
+                "delete" -> background(result) { SyncFolderStore.delete(this, tree!!, call.argument<String>("name")!!) }
                 else -> result.notImplemented()
             }
         }

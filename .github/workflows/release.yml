@@ -1,9 +1,10 @@
-# Android release, built by GitHub from this repository's code: a version tag (v0.10.2) or a manual
-# run builds the APK, signs it with the release key (repository secrets), records a build provenance
-# attestation that anyone can check, and attaches the APK to the release of that tag.
+# Releases, built by GitHub from this repository's code: a version tag (v0.10.2) or a manual run
+# builds the Android APK (signed with the release key from repository secrets) and the Windows app
+# (a zip), records a build provenance attestation for each that anyone can check, and attaches both
+# to the release of that tag.
 #
 #   gh attestation verify Budget-0.10.2.apk --repo <owner>/budget-app
-name: Android release
+name: Release
 
 on:
   push:
@@ -20,7 +21,7 @@ permissions:
   attestations: write   # store the attestation
 
 concurrency:
-  group: android-release-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -111,3 +112,51 @@ jobs:
       - name: Remove the key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/key.properties"
+
+  windows:
+    # After the Android job: it creates (or empties) the release this job adds to.
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.7
+          channel: stable
+          cache: true
+
+      - name: Build the Windows app
+        run: |
+          flutter pub get
+          flutter build windows --release
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          APP=build/windows/x64/runner/Release
+          # The Visual C++ runtime next to Budget.exe, for computers that don't have it.
+          for dll in msvcp140.dll vcruntime140.dll vcruntime140_1.dll; do cp "/c/Windows/System32/$dll" "$APP/"; done
+          mkdir -p dist
+          (cd "$APP" && 7z a -tzip "$GITHUB_WORKSPACE/dist/Budget-$VERSION-windows.zip" . > /dev/null)
+          echo "ZIP=dist/Budget-$VERSION-windows.zip" >> "$GITHUB_ENV"
+
+      - name: Build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ env.ZIP }}
+
+      - name: Add to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          gh release upload "$TAG" "$ZIP" --clobber
+          gh release view "$TAG" --json body --jq .body > notes.md
+          printf '\n---\n**Windows:** `%s` (распакуйте и запустите Budget.exe · unzip and run Budget.exe)\n- SHA-256: `%s`\n' "$(basename "$ZIP")" "$SHA" >> notes.md
+          gh release edit "$TAG" --notes-file notes.md

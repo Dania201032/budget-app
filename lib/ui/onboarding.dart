@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/strings.dart';
+import '../platform.dart';
 import '../state/app_state.dart';
 import 'data_screens.dart';
 import 'lock_screen.dart';
+import 'sync_screen.dart';
 
 /// Countries offered at the first start and in Settings, in this order.
 const countries = ['CN', 'RU', 'KZ', 'DE', 'NL'];
@@ -40,6 +42,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     await context.read<AppState>().completeOnboarding(country: _country, lang: _lang);
   }
 
+  /// The computer: joins the phone's sync folder and opens with its data.
+  Future<void> _joinPhone() async {
+    final state = context.read<AppState>();
+    final joined = await Navigator.of(context)
+        .push<bool>(MaterialPageRoute(builder: (_) => const SyncScreen(closeWhenJoined: true)));
+    if (joined == true) await state.completeOnboarding(country: state.country, lang: _lang);
+  }
+
   @override
   Widget build(BuildContext context) {
     return switch (_step) {
@@ -56,11 +66,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             }
           }),
           onNext: () => setState(() => _step = 1),
-          footer: TextButton.icon(
-            icon: const Icon(Icons.restore),
-            label: Text(tr('have_backup')),
-            onPressed: () => restoreFromBackupFile(context),
-          ),
+          // The computer starts from the phone's data (sync); the phone from a backup file.
+          footer: appIsDesktop
+              ? TextButton.icon(
+                  icon: const Icon(Icons.phone_android),
+                  label: Text(tr('sync_have_phone')),
+                  onPressed: _joinPhone,
+                )
+              : TextButton.icon(
+                  icon: const Icon(Icons.restore),
+                  label: Text(tr('have_backup')),
+                  onPressed: () => restoreFromBackupFile(context),
+                ),
         ),
       1 => _ChoicePage(
           title: tr('choose_language'),
