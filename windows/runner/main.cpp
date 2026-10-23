@@ -20,6 +20,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   flutter::DartProject project(L"data");
   // Impeller on OpenGL (ANGLE) leaves the window blank on some PCs' graphics; the Skia renderer works everywhere.
   project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+  // A real graphics card, not a virtual display adapter (screen-casting tools add one) that draws nothing.
+  project.set_gpu_preference(flutter::GpuPreference::LowPowerPreference);
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
