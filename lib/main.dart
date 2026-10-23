@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +10,7 @@ import 'capture/capture_service.dart';
 import 'data/database.dart';
 import 'data/rates.dart';
 import 'data/repository.dart';
+import 'io/app_log.dart';
 import 'io/home_widgets.dart';
 import 'l10n/strings.dart';
 import 'platform.dart';
@@ -29,8 +31,19 @@ import 'ui/txn_editor.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   appIsDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  await AppLog.start();
+  AppLog.line('start ${Platform.operatingSystemVersion}');
+  FlutterError.onError = (d) {
+    AppLog.line('flutter error: ${d.exceptionAsString()}\n${d.stack}');
+    FlutterError.presentError(d);
+  };
+  PlatformDispatcher.instance.onError = (e, s) {
+    AppLog.line('error: $e\n$s');
+    return false;
+  };
   await initializeDateFormatting();
   final repo = Repository(await openAppDatabase());
+  AppLog.line('database open');
   // Before the user picks a language: the phone's, if supported.
   if (await repo.setting('language') == null) {
     currentLanguage = guessLanguage(WidgetsBinding.instance.platformDispatcher.locale.languageCode);
@@ -38,9 +51,12 @@ Future<void> main() async {
   }
   final state = AppState(repo, CaptureService(), RatesService(repo.db));
   await state.init();
+  AppLog.line('state ready');
   await appLock.load();
   HomeWidgetsBridge.listen(state);
+  AppLog.line('run');
   runApp(ChangeNotifierProvider.value(value: state, child: const BudgetApp()));
+  WidgetsBinding.instance.addPostFrameCallback((_) => AppLog.line('first frame'));
 }
 
 /// Started by Android without any UI (widgets/WidgetRefresh.kt) after a background capture, at

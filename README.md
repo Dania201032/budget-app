@@ -1,9 +1,10 @@
-# Бюджет — личные финансы, которые остаются на вашем телефоне
+# Бюджет — личные финансы, которые остаются на ваших устройствах
 
 [English below](#english)
 
 Приложение для учёта расходов и доходов: дневной лимит, бюджет, цели, прогноз «на сколько хватит денег», автоматическая
-запись платежей Alipay, WeChat и банков (Россия, Казахстан, Германия, Нидерланды). Android; версия для iPhone в работе.
+запись платежей Alipay, WeChat и банков (Россия, Казахстан, Германия, Нидерланды). Android и Windows (синхронизация
+через ваш Google Drive); версия для iPhone в работе.
 
 Этот репозиторий открыт, чтобы каждый мог сам проверить: **приложение не собирает и не отправляет ваши данные**.
 
@@ -30,9 +31,27 @@ gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app
 Ответ «Verification succeeded» означает: этот файл собран GitHub из кода этого репозитория. Там же, в описании выпуска,
 указаны контрольная сумма SHA-256 файла и отпечаток сертификата подписи.
 
+### Версия для компьютера (Windows)
+
+В том же выпуске — архив `Budget-…-windows.zip`. Распакуйте его в любую папку и запустите `Budget.exe`.
+Windows может показать «Windows защитил ваш компьютер» (у программы нет платной подписи Microsoft): нажмите
+«Подробнее» → «Выполнить в любом случае». Проверка происхождения — та же команда `gh attestation verify` для zip-файла.
+
+### Синхронизация телефона и компьютера — без сервера
+
+Устройства обмениваются изменениями через **папку в вашем Google Drive**: каждое записывает туда свои изменения
+в зашифрованных файлах и забирает чужие. Файлы зашифрованы паролем синхронизации (PBKDF2 + AES-256-GCM), который
+знаете только вы, — Google видит лишь непонятный набор байтов. Само приложение при этом в интернет не ходит: файлы
+отправляет в облако программа Google Drive. Код: [`lib/sync/`](lib/sync/).
+
+1. На компьютере установите [Google Drive для компьютера](https://www.google.com/drive/download/) — папка Drive
+   появится как обычный диск.
+2. На телефоне: Настройки → «Синхронизация» → выберите папку в Google Drive, придумайте пароль.
+3. На компьютере при первом запуске: «У меня есть данные на телефоне» → та же папка → тот же пароль.
+
 ## Где хранятся данные
 
-- **Только на телефоне.** У приложения нет сервера, аккаунтов, рекламы и аналитики — ни одной библиотеки, которая
+- **Только на ваших устройствах.** У приложения нет сервера, аккаунтов, рекламы и аналитики — ни одной библиотеки, которая
   отправляет данные куда-либо (список библиотек: [`pubspec.yaml`](pubspec.yaml), [`android/app/build.gradle.kts`](android/app/build.gradle.kts)).
 - **База зашифрована** (SQLCipher, AES-256). Ключ случайный и хранится в защищённом хранилище Android (Keystore):
   [`lib/data/database.dart`](lib/data/database.dart), [`lib/security/secure_store.dart`](lib/security/secure_store.dart).
@@ -111,6 +130,12 @@ attestation. Check it with [GitHub CLI](https://cli.github.com):
 - **Accessibility and notification access** are used only for payment screens and notifications of Alipay, WeChat,
   bank apps and Google Wallet ([`payment_accessibility.xml`](android/app/src/main/res/xml/payment_accessibility.xml));
   only the found operation (amount, date, payee) is kept. Chats, passwords, contacts and other apps are never read.
+
+**Windows and sync:** the release also has `Budget-…-windows.zip` (unzip, run `Budget.exe`; Windows SmartScreen may ask
+to confirm — the app has no paid Microsoft signature). The phone and the computer sync **without a server**, through a
+folder in your own Google Drive: each device writes its changes there as files encrypted with your sync password
+(PBKDF2 + AES-256-GCM) and reads the other's. The app itself doesn't go online for this — the Google Drive app uploads
+the files. Code: [`lib/sync/`](lib/sync/).
 
 **License:** source available for review only; no copying, modification or redistribution without the author's written
 permission — see [`LICENSE`](LICENSE).

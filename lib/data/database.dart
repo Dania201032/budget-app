@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart' show databaseFactoryFfi, sq
 import 'package:sqflite_sqlcipher/sqflite.dart' as cipher;
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
+import '../io/app_log.dart';
 import '../platform.dart';
 import '../security/secure_store.dart';
 import '../sync/sync_tables.dart';
@@ -80,7 +81,9 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
 Future<Database> openDesktopDatabase({String? path, String? key}) async {
   sqfliteFfiInit();
   final dbPath = path ?? p.join((await getApplicationSupportDirectory()).path, 'budget.db');
+  AppLog.line('database: key');
   final dbKey = key ?? await _databaseKey();
+  AppLog.line('database: opening $dbPath');
   return databaseFactoryFfi.openDatabase(
     dbPath,
     options: OpenDatabaseOptions(

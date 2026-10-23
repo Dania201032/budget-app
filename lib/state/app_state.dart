@@ -12,6 +12,7 @@ import '../domain/budget_math.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
 import '../domain/runway.dart';
+import '../io/app_log.dart';
 import '../io/backup.dart';
 import '../io/home_widgets.dart';
 import '../io/sheet_import.dart';
@@ -148,8 +149,10 @@ class AppState extends ChangeNotifier {
     hiddenCharts = (await repo.setting('hidden_charts') ?? '').split(',').where((s) => s.isNotEmpty).toSet();
     final last = await repo.setting('backup_last');
     backupLast = last == null ? null : DateTime.tryParse(last);
+    AppLog.line('init: settings read');
     await capture.setLanguage(currentLanguage);
     await rates.load(baseCurrency);
+    AppLog.line('init: rates loaded');
     // Once: names and notes recorded before the parsers were fixed (v0.8.8).
     if (await repo.setting('cleanup_names') == null) {
       await repo.cleanUpCapturedNames();
@@ -161,6 +164,7 @@ class AppState extends ChangeNotifier {
       await repo.setSetting('own_transfers_paired', '2');
     }
     await refresh();
+    AppLog.line('init: refreshed');
     // The phone keeps the reminders even if the app was not opened for a while; refresh them.
     await syncReminders();
     if (syncAfter) unawaited(syncNow());
