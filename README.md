@@ -24,7 +24,7 @@ APK собирает **GitHub**, а не разработчик: при выпу
 которое разработчик не может. Проверка одной командой ([GitHub CLI](https://cli.github.com)):
 
 ```
-gh attestation verify Budget-0.10.1.apk --repo demintsev03082004-collab/budget-app
+gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app
 ```
 
 Ответ «Verification succeeded» означает: этот файл собран GitHub из кода этого репозитория. Там же, в описании выпуска,
@@ -101,7 +101,7 @@ country and a language on the first start.
 The APK is **built by GitHub from this repository's code** ([workflow](.github/workflows/android-release.yml),
 [build logs](../../actions)), not on the developer's computer, and every file gets a signed build provenance
 attestation. Check it with [GitHub CLI](https://cli.github.com):
-`gh attestation verify Budget-0.10.1.apk --repo demintsev03082004-collab/budget-app` → "Verification succeeded".
+`gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app` → "Verification succeeded".
 
 - **Data stays on the phone.** No server, no accounts, no ads, no analytics libraries ([`pubspec.yaml`](pubspec.yaml)).
 - **The database is encrypted** (SQLCipher, AES-256) with a random key kept in the Android Keystore.
