@@ -19,6 +19,7 @@ import app.budget.budget_app.capture.CaptureInbox
 import app.budget.budget_app.capture.PaymentAccessibilityService
 import app.budget.budget_app.capture.PaymentNotificationListener
 import app.budget.budget_app.capture.SplitActions
+import app.budget.budget_app.statements.PdfStatementText
 import app.budget.budget_app.widgets.HomeWidgets
 import app.budget.budget_app.widgets.WidgetKind
 import app.budget.budget_app.widgets.WidgetRefresh
@@ -182,6 +183,16 @@ class MainActivity : FlutterFragmentActivity() {
                     null
                 }
                 "delete" -> background(result) { SyncFolderStore.delete(this, tree!!, call.argument<String>("name")!!) }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Bank statements given as PDF (lib/import/pdf_text.dart).
+        MethodChannel(messenger, "budget/statement").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pdfText" -> background(result) {
+                    PdfStatementText.read(this, call.argument<ByteArray>("bytes")!!, call.argument<String>("password"))
+                }
                 else -> result.notImplemented()
             }
         }

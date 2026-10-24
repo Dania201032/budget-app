@@ -1,6 +1,14 @@
 allprojects {
     repositories {
-        google()
+        // Google's repository only for Google's libraries: others (PDFBox) come from Maven Central,
+        // so a build doesn't fail where dl.google.com is unreachable for them.
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("androidx.*")
+                includeGroupByRegex("com\\.google.*")
+            }
+        }
         mavenCentral()
     }
 }

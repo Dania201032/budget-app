@@ -57,6 +57,11 @@ class Account {
   final int? balanceMinor;
   final DateTime? balanceAt;
 
+  /// Shared budget: whose account it is (a person's uid; null = common to everyone), and whether
+  /// the others can't see it at all (it then never reaches their devices).
+  final String? owner;
+  final bool hidden;
+
   const Account({
     required this.id,
     required this.name,
@@ -65,6 +70,8 @@ class Account {
     required this.type,
     this.balanceMinor,
     this.balanceAt,
+    this.owner,
+    this.hidden = false,
   });
 
   factory Account.fromRow(Map<String, Object?> r) => Account(
@@ -75,7 +82,23 @@ class Account {
         type: r['type'] as String,
         balanceMinor: r['balance_minor'] as int?,
         balanceAt: r['balance_at'] == null ? null : DateTime.fromMillisecondsSinceEpoch(r['balance_at'] as int),
+        owner: r['owner'] as String?,
+        hidden: (r['private'] as int? ?? 0) == 1,
       );
+}
+
+/// Someone sharing the budget (see lib/household/).
+class Person {
+  final int id;
+  final String uid;
+  final String name;
+  final int color;
+  const Person({required this.id, required this.uid, required this.name, this.color = 0});
+
+  factory Person.fromRow(Map<String, Object?> r) =>
+      Person(id: r['id'] as int, uid: r['uid'] as String? ?? '', name: r['name'] as String, color: r['color'] as int? ?? 0);
+
+  String get initial => name.trim().isEmpty ? '?' : String.fromCharCode(name.trim().runes.first).toUpperCase();
 }
 
 class Txn {
@@ -109,6 +132,9 @@ class Txn {
   final bool ownTransfer;
   final int? pairId;
 
+  /// Shared budget: the person (uid) who recorded it, null before the budget was shared.
+  final String? author;
+
   const Txn({
     this.id,
     required this.time,
@@ -126,6 +152,7 @@ class Txn {
     this.raw,
     this.ownTransfer = false,
     this.pairId,
+    this.author,
   });
 
   /// Auto-captured from payment apps / bank notifications (not manual, not imported from a spreadsheet).
@@ -153,6 +180,7 @@ class Txn {
         raw: r['raw'] as String?,
         ownTransfer: (r['own_transfer'] as int? ?? 0) == 1,
         pairId: r['pair_id'] as int?,
+        author: r['author'] as String?,
       );
 
   Map<String, Object?> toRow() => {
@@ -172,6 +200,7 @@ class Txn {
         'raw': raw,
         'own_transfer': ownTransfer ? 1 : 0,
         'pair_id': pairId,
+        'author': author,
       };
 
   Txn copyWith({
@@ -208,6 +237,7 @@ class Txn {
         raw: raw ?? this.raw,
         ownTransfer: ownTransfer ?? this.ownTransfer,
         pairId: pairId != null ? pairId() : this.pairId,
+        author: author,
       );
 }
 

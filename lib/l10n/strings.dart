@@ -11,6 +11,7 @@ part 'strings_desk_e.dart';
 part 'strings_desk_f.dart';
 part 'strings_desk_g.dart';
 part 'strings_eu.dart';
+part 'strings_hh.dart';
 
 const supportedLanguages = ['ru', 'en', 'zh', 'kk', 'de', 'nl'];
 
@@ -381,6 +382,180 @@ const _s = <String, List<String>>{
   'export_sub': ['Excel или CSV', 'Excel or CSV', 'Excel 或 CSV', 'Excel немесе CSV'],
   'import_excel': ['Импорт из Excel', 'Import from Excel', '从 Excel 导入', 'Excel-ден импорттау'],
   'import_excel_sub': ['Перенести историю из вашей таблицы', 'Bring in history from your spreadsheet', '导入表格中的历史记录', 'Кестеңіздегі тарихты көшіру'],
+  // --- Bank statements (lib/import/) ---
+  'stmt_title': ['Импорт выписки', 'Import a statement', '导入账单', 'Үзінді көшірмені импорттау'],
+  'stmt_tile_sub': [
+    'Alipay, WeChat, банки: добавит пропущенные операции',
+    'Alipay, WeChat, banks: adds the operations the app missed',
+    '支付宝、微信、银行：补上遗漏的记录',
+    'Alipay, WeChat, банктер: жіберіп алған операцияларды қосады',
+  ],
+  'stmt_explain': [
+    'Выгрузите выписку в приложении банка или Alipay/WeChat и откройте файл здесь. Операции, которые уже есть, не задвоятся: приложение их узнает и допишет название магазина.',
+    'Export a statement in your bank\'s or Alipay/WeChat app and open the file here. Operations the app already has are not doubled: it recognises them and fills in the shop\'s name.',
+    '在银行或支付宝/微信中导出账单，然后在这里打开文件。已有的记录不会重复：应用会识别它们并补上商户名称。',
+    'Банк немесе Alipay/WeChat қолданбасында үзінді көшірмені жүктеп, файлды осында ашыңыз. Бар операциялар қайталанбайды: қолданба оларды танып, дүкен атауын толтырады.',
+  ],
+  'stmt_formats': [
+    'CSV, Excel, PDF (Сбер, ВТБ, Т-Банк), CAMT, MT940, ZIP с паролем (Alipay, WeChat)',
+    'CSV, Excel, PDF (Sber, VTB, T-Bank), CAMT, MT940, password-protected ZIP (Alipay, WeChat)',
+    'CSV、Excel、PDF（俄罗斯银行）、CAMT、MT940、带密码的 ZIP（支付宝、微信）',
+    'CSV, Excel, PDF (Сбер, ВТБ, Т-Банк), CAMT, MT940, құпиясөзді ZIP (Alipay, WeChat)',
+  ],
+  'stmt_formats_desktop': [
+    'CSV, Excel, CAMT, MT940, ZIP с паролем. PDF-выписки откройте на телефоне — синхронизация перенесёт операции сюда.',
+    'CSV, Excel, CAMT, MT940, password-protected ZIP. Open PDF statements on the phone — sync brings the operations here.',
+    'CSV、Excel、CAMT、MT940、带密码的 ZIP。PDF 账单请在手机上打开，同步会把记录带到这里。',
+    'CSV, Excel, CAMT, MT940, құпиясөзді ZIP. PDF үзінділерді телефонда ашыңыз — синхрондау операцияларды осында әкеледі.',
+  ],
+  'stmt_pick': ['Выбрать файл выписки', 'Choose the statement file', '选择账单文件', 'Үзінді файлын таңдау'],
+  'stmt_password': ['Пароль архива', 'Archive password', '压缩包密码', 'Мұрағат құпиясөзі'],
+  'stmt_password_hint': [
+    'Alipay и WeChat присылают пароль от архива в своём приложении, в сообщениях сервиса.',
+    'Alipay and WeChat send the archive\'s password in their app, in a service message.',
+    '支付宝和微信会在应用内的服务消息中发送压缩包密码。',
+    'Alipay мен WeChat мұрағат құпиясөзін қолданбадағы қызмет хабарламасында жібереді.',
+  ],
+  'stmt_password_wrong': ['Пароль не подошёл. Попробуйте ещё раз.', 'Wrong password. Try again.', '密码不正确，请重试。', 'Құпиясөз дұрыс емес. Қайталап көріңіз.'],
+  'stmt_pdf_phone': [
+    'PDF-выписки читаются на телефоне. Откройте файл там — синхронизация перенесёт операции на компьютер.',
+    'PDF statements are read on the phone. Open the file there — sync brings the operations to the computer.',
+    'PDF 账单需要在手机上读取。请在手机上打开文件，同步会把记录带到电脑。',
+    'PDF үзінділер телефонда оқылады. Файлды сонда ашыңыз — синхрондау операцияларды компьютерге әкеледі.',
+  ],
+  'stmt_xls': [
+    'Это старый формат Excel (.xls). Откройте файл в Excel или Google Таблицах и сохраните как .xlsx или .csv.',
+    'This is the old Excel format (.xls). Open it in Excel or Google Sheets and save it as .xlsx or .csv.',
+    '这是旧版 Excel 格式（.xls）。请用 Excel 或 Google 表格打开并另存为 .xlsx 或 .csv。',
+    'Бұл ескі Excel пішімі (.xls). Оны Excel немесе Google Sheets арқылы ашып, .xlsx не .csv ретінде сақтаңыз.',
+  ],
+  'stmt_unknown': [
+    'Не получилось распознать выписку в этом файле. Если это выписка банка, напишите разработчику, какой банк, — добавим.',
+    'Couldn\'t find a statement in this file. If it is a bank statement, tell the developer which bank — it will be added.',
+    '无法识别此文件中的账单。如果这是银行账单，请告诉开发者是哪家银行，我们会添加支持。',
+    'Бұл файлдан үзінді табылмады. Бұл банк үзіндісі болса, әзірлеушіге қай банк екенін жазыңыз — қосамыз.',
+  ],
+  'stmt_empty': [
+    'В этой выписке нет операций за выбранный период. Выберите период, когда по карте были платежи.',
+    'This statement has no operations in its period. Choose a period with payments on the card.',
+    '此账单所选期间内没有交易。请选择有付款记录的期间。',
+    'Бұл үзіндіде таңдалған кезеңде операциялар жоқ. Картада төлемдер болған кезеңді таңдаңыз.',
+  ],
+  'stmt_found': ['Операций в файле: {0} · {1} – {2}', 'Operations in the file: {0} · {1} – {2}', '文件中的记录：{0} · {1} – {2}', 'Файлдағы операциялар: {0} · {1} – {2}'],
+  'stmt_account': ['Счёт', 'Account', '账户', 'Шот'],
+  'stmt_pick_account': [
+    'Выберите, к какому счёту относится выписка.',
+    'Choose which account the statement is for.',
+    '请选择此账单对应的账户。',
+    'Үзінді қай шотқа тиесілі екенін таңдаңыз.',
+  ],
+  'stmt_summary': [
+    'Новых: {0} · уже в приложении: {1} · пропущено: {2}',
+    'New: {0} · already in the app: {1} · left out: {2}',
+    '新增：{0} · 已有：{1} · 跳过：{2}',
+    'Жаңа: {0} · қолданбада бар: {1} · өткізілді: {2}',
+  ],
+  'stmt_new': ['Будут добавлены', 'Will be added', '将添加', 'Қосылады'],
+  'stmt_nothing_new': [
+    'Всё из этой выписки уже есть в приложении.',
+    'Everything in this statement is already in the app.',
+    '此账单中的所有记录都已在应用中。',
+    'Бұл үзіндідегінің бәрі қолданбада бар.',
+  ],
+  'stmt_known': ['Уже в приложении', 'Already in the app', '已在应用中', 'Қолданбада бар'],
+  'stmt_skipped': ['Пропущены', 'Left out', '已跳过', 'Өткізілген'],
+  'stmt_r_failed': ['не прошла', 'failed', '未成功', 'өтпеді'],
+  'stmt_r_pending': ['ещё в обработке', 'still pending', '处理中', 'әлі өңделуде'],
+  'stmt_r_neutral': ['внутри кошелька', 'within the wallet', '不计收支', 'әмиян ішінде'],
+  'stmt_r_deleted': ['вы её удалили', 'you deleted it', '您已删除', 'сіз оны жойдыңыз'],
+  'stmt_r_excel': ['день из таблицы Excel', 'a day from the Excel import', 'Excel 导入的日期', 'Excel кестесіндегі күн'],
+  'stmt_add': ['Добавить ({0})', 'Add ({0})', '添加（{0}）', 'Қосу ({0})'],
+  'stmt_done': ['Добавлено: {0}, уточнено: {1}', 'Added: {0}, updated: {1}', '已添加：{0}，已更新：{1}', 'Қосылды: {0}, нақтыланды: {1}'],
+  'stmt_private': [
+    'Файл читается только на этом устройстве и никуда не отправляется.',
+    'The file is read on this device only and is not sent anywhere.',
+    '文件只在本设备上读取，不会发送到任何地方。',
+    'Файл тек осы құрылғыда оқылады және ешқайда жіберілмейді.',
+  ],
+  'bank_direct': ['Или загрузить прямо из банка', 'Or download straight from the bank', '或直接从银行下载', 'Немесе тікелей банктен жүктеу'],
+  'bank_direct_sub': [
+    'Телефон обращается к банку сам, без посредников. Для Германии и Нидерландов.',
+    'The device talks to the bank itself, with no one in between. For Germany and the Netherlands.',
+    '设备直接与银行通信，没有中间方。适用于德国和荷兰。',
+    'Құрылғы банкпен тікелей байланысады, делдалсыз. Германия мен Нидерланд үшін.',
+  ],
+  'fints_button': ['Sparkasse, DKB, ING… (FinTS)', 'Sparkasse, DKB, ING… (FinTS)', 'Sparkasse、DKB、ING…（FinTS）', 'Sparkasse, DKB, ING… (FinTS)'],
+  'bank_failed': ['Не удалось загрузить: {0}', 'Couldn\'t download: {0}', '下载失败：{0}', 'Жүктеу мүмкін болмады: {0}'],
+  'bank_loading': ['Связь с банком…', 'Talking to the bank…', '正在连接银行…', 'Банкпен байланыс…'],
+  'bank_period': ['За какой срок', 'For how long', '时间范围', 'Қандай мерзімге'],
+  'bank_days': ['{0} дней', '{0} days', '{0} 天', '{0} күн'],
+  'bank_choose_account': ['Какой счёт', 'Which account', '哪个账户', 'Қай шот'],
+  'bank_copy_log': ['Скопировать отчёт', 'Copy the report', '复制报告', 'Есепті көшіру'],
+  'bank_connect': ['Подключить', 'Connect', '连接', 'Қосу'],
+  'bunq_key': ['API-ключ', 'API key', 'API 密钥', 'API кілті'],
+  'bunq_key_hint': [
+    'Создайте ключ в приложении bunq: Profile → Security & Settings → Developers → API keys. Ключ хранится в защищённом хранилище телефона и отправляется только в bunq. Первое подключение займёт до минуты.',
+    'Create a key in the bunq app: Profile → Security & Settings → Developers → API keys. The key stays in the phone\'s secure storage and goes only to bunq. The first connection takes up to a minute.',
+    '在 bunq 应用中创建密钥：Profile → Security & Settings → Developers → API keys。密钥保存在手机的安全存储中，只发送给 bunq。首次连接最多需要一分钟。',
+    'bunq қолданбасында кілт жасаңыз: Profile → Security & Settings → Developers → API keys. Кілт телефонның қорғалған қоймасында сақталады және тек bunq-қа жіберіледі. Алғашқы қосылу бір минутқа дейін созылады.',
+  ],
+  'bunq_failed': ['bunq ответил ошибкой: {0}', 'bunq returned an error: {0}', 'bunq 返回错误：{0}', 'bunq қате қайтарды: {0}'],
+  'fints_title': ['Вход в онлайн-банк', 'Online banking login', '登录网上银行', 'Онлайн-банкке кіру'],
+  'fints_bank': ['Банк', 'Bank', '银行', 'Банк'],
+  'fints_other_bank': ['Другой банк', 'Another bank', '其他银行', 'Басқа банк'],
+  'fints_blz': ['Код банка (BLZ)', 'Bank code (BLZ)', '银行代码（BLZ）', 'Банк коды (BLZ)'],
+  'fints_url': ['Адрес FinTS', 'FinTS address', 'FinTS 地址', 'FinTS мекенжайы'],
+  'fints_url_hint': [
+    'Есть на сайте банка: «FinTS-Adresse» или «HBCI-Server».',
+    'Your bank\'s website lists it as "FinTS-Adresse" or "HBCI-Server".',
+    '可在银行网站上找到：“FinTS-Adresse”或“HBCI-Server”。',
+    'Банк сайтында бар: «FinTS-Adresse» немесе «HBCI-Server».',
+  ],
+  'fints_user': ['Логин (Anmeldename)', 'Login (Anmeldename)', '登录名（Anmeldename）', 'Логин (Anmeldename)'],
+  'fints_pin': ['PIN онлайн-банка', 'Online banking PIN', '网银 PIN', 'Онлайн-банк PIN'],
+  'fints_private': [
+    'PIN не сохраняется и отправляется только в ваш банк.',
+    'The PIN is not stored and goes only to your bank.',
+    'PIN 不会被保存，只发送给您的银行。',
+    'PIN сақталмайды және тек банкіңізге жіберіледі.',
+  ],
+  'fints_tan_method': ['Способ подтверждения (TAN)', 'Confirmation method (TAN)', '确认方式（TAN）', 'Растау тәсілі (TAN)'],
+  'fints_tan_medium': ['Устройство для TAN', 'TAN device', 'TAN 设备', 'TAN құрылғысы'],
+  'fints_tan_medium_hint': [
+    'Название устройства, как в настройках онлайн-банка (например, имя телефона для pushTAN).',
+    'The device\'s name as in your online banking settings (e.g. the phone used for pushTAN).',
+    '与网银设置中相同的设备名称（例如用于 pushTAN 的手机）。',
+    'Онлайн-банк баптауларындағы құрылғы атауы (мысалы, pushTAN телефоны).',
+  ],
+  'fints_confirm_title': ['Подтвердите в приложении банка', 'Confirm in your bank\'s app', '请在银行应用中确认', 'Банк қолданбасында растаңыз'],
+  'fints_confirm_text': [
+    'Банк отправил запрос в своё приложение. Подтвердите его там и нажмите «Подтвердил».',
+    'The bank sent a request to its app. Confirm it there, then tap "Confirmed".',
+    '银行已向其应用发送请求。请在那里确认，然后点击“已确认”。',
+    'Банк өз қолданбасына сұрау жіберді. Сонда растап, «Расталды» түймесін басыңыз.',
+  ],
+  'fints_still_waiting': [
+    'Банк ещё не получил подтверждение.',
+    'The bank hasn\'t received the confirmation yet.',
+    '银行尚未收到确认。',
+    'Банк растауды әлі алмады.',
+  ],
+  'fints_confirmed': ['Подтвердил', 'Confirmed', '已确认', 'Расталды'],
+  'fints_tan': ['TAN', 'TAN', 'TAN', 'TAN'],
+  'fints_not_registered': [
+    'Подключение к немецким банкам заработает после регистрации приложения в Deutsche Kreditwirtschaft (FinTS). До тех пор выгрузите выписку CSV или CAMT в приложении банка и откройте файл здесь.',
+    'Connecting to German banks will work once the app is registered with the Deutsche Kreditwirtschaft (FinTS). Until then, export a CSV or CAMT statement in your bank\'s app and open the file here.',
+    '应用在 Deutsche Kreditwirtschaft（FinTS）注册后即可连接德国银行。在此之前，请在银行应用中导出 CSV 或 CAMT 账单并在这里打开。',
+    'Неміс банктеріне қосылу қолданба Deutsche Kreditwirtschaft (FinTS) тіркелгеннен кейін жұмыс істейді. Оған дейін банк қолданбасында CSV не CAMT үзіндісін жүктеп, файлды осында ашыңыз.',
+  ],
+  'fints_no_accounts': ['Банк не показал ни одного счёта.', 'The bank showed no accounts.', '银行没有返回任何账户。', 'Банк бірде-бір шотты көрсетпеді.'],
+  'fints_pin_wrong': [
+    'Банк не принял логин или PIN. Проверьте их; после нескольких ошибок банк блокирует доступ.',
+    'The bank didn\'t accept the login or PIN. Check them: after several mistakes the bank blocks access.',
+    '银行不接受登录名或 PIN。请检查：多次错误后银行会锁定访问。',
+    'Банк логинді немесе PIN-ді қабылдамады. Тексеріңіз: бірнеше қатеден кейін банк қолжетімділікті бұғаттайды.',
+  ],
+  'fints_failed': ['Банк ответил: {0}', 'The bank answered: {0}', '银行回复：{0}', 'Банк жауабы: {0}'],
   'backup': ['Резервная копия в облако', 'Cloud backup', '云备份', 'Бұлтқа сақтық көшірме'],
   'backup_on': ['Включена, последняя: {0}', 'On, last: {0}', '已开启，最近：{0}', 'Қосулы, соңғысы: {0}'],
   'backup_off': ['Не настроена — данные только на телефоне', 'Not set up — data is only on this phone', '未设置——数据仅在本机', 'Бапталмаған — деректер тек телефонда'],
@@ -931,7 +1106,7 @@ set currentLanguage(String lang) => _lang = supportedLanguages.contains(lang) ? 
 String tr(String key, [List<Object?> args = const []]) {
   final i = supportedLanguages.indexOf(_lang);
   final desk = _desk[key];
-  final list = _s[key];
+  final list = _s[key] ?? _hh[key];
   if (list == null && desk == null) return key;
   var s = desk != null
       ? desk[i < desk.length ? i : 1]
@@ -945,7 +1120,9 @@ String tr(String key, [List<Object?> args = const []]) {
 }
 
 bool hasTr(String key) =>
-    (_desk[key]?.length ?? 0) == supportedLanguages.length || (_s.containsKey(key) && _deNl.containsKey(key));
+    (_desk[key]?.length ?? 0) == supportedLanguages.length ||
+    (_hh[key]?.length ?? 0) == supportedLanguages.length ||
+    (_s.containsKey(key) && _deNl.containsKey(key));
 
 /// Locale for intl number/date formatting.
 String get intlLocale => _lang;

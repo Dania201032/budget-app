@@ -32,6 +32,13 @@ void main() {
     for (final h in ['budget', 'capture', 'review', 'overview', 'split', 'money', 'currency', 'backup']) {
       expect(hasTr('help_${h}_t') && hasTr('help_${h}_b'), isTrue);
     }
+    // Shared budget: the answers' texts.
+    for (final d in ['android', 'iphone', 'computer']) {
+      expect(hasTr('hh_dev_$d') && hasTr('hh_dev_${d}_sub') && hasTr('hh_app_$d'), isTrue, reason: d);
+    }
+    for (final c in ['gdrive', 'onedrive', 'yandex', 'jianguoyun', 'other']) {
+      expect(hasTr('hh_cloud_$c') && hasTr('hh_cloud_${c}_sub') && hasTr('hh_share_$c') && hasTr('hh_folder_$c'), isTrue, reason: c);
+    }
   });
 
   test('switching language changes text and placeholders work', () {

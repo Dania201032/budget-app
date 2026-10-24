@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../data/models.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
+import '../household/household.dart' show personColors;
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
@@ -337,6 +338,11 @@ class TxnTile extends StatelessWidget {
           const SizedBox(width: 4),
           Icon(Icons.swap_horiz, size: 16, color: scheme.outline),
         ],
+        // Shared budget: who recorded it, when it wasn't me.
+        if (state.householdOn && txn.author != null && txn.author != state.me && state.personOf(txn.author) != null) ...[
+          const SizedBox(width: 6),
+          PersonBadge(state.personOf(txn.author)!, size: 16),
+        ],
       ]),
       subtitle: Text(subtitleParts.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Column(
@@ -456,3 +462,21 @@ Widget hideFabOnScroll(ValueNotifier<bool> visible, Widget body) => Notification
       },
       child: body,
     );
+
+/// A person's initial in their color, next to operations and accounts in a shared budget.
+class PersonBadge extends StatelessWidget {
+  final Person person;
+  final double size;
+  const PersonBadge(this.person, {super.key, this.size = 18});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: Color(person.color == 0 ? personColors.first : person.color), shape: BoxShape.circle),
+        child: Text(person.initial,
+            style: TextStyle(color: Colors.white, fontSize: size * 0.55, fontWeight: FontWeight.w600, height: 1)),
+      );
+}
+

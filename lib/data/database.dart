@@ -13,12 +13,12 @@ import '../platform.dart';
 import '../security/secure_store.dart';
 import '../sync/sync_tables.dart';
 
-const schemaVersion = 9;
+const schemaVersion = 10;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
   'settings', 'accounts', 'categories', 'budgets', 'merchant_rules', 'rates', 'manual_rates',
-  'transactions', 'goals', 'debts', 'dismissed', 'recurring',
+  'transactions', 'goals', 'debts', 'dismissed', 'recurring', 'people',
 ];
 
 Future<void> _configure(Database db) => db.execute('PRAGMA foreign_keys = ON');
@@ -34,6 +34,7 @@ Future<void> _create(Database db, int _) async {
   await _migrateV7(db);
   await _migrateV8(db);
   await migrateSyncV9(db);
+  await migrateHouseholdV10(db);
 }
 
 Future<void> _upgrade(Database db, int from, int to) async {
@@ -46,6 +47,8 @@ Future<void> _upgrade(Database db, int from, int to) async {
   if (from < 8) await _migrateV8(db);
   // v9: sync between the phone and the computer (uids, change log).
   if (from < 9) await migrateSyncV9(db);
+  // v10: the shared budget (people, account owners, who recorded what).
+  if (from < 10) await migrateHouseholdV10(db);
 }
 
 /// The app's database. On the phone it is encrypted (SQLCipher, AES-256) with a random key kept

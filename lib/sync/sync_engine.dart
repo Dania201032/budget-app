@@ -24,6 +24,11 @@ class SyncReport {
 /// reads the other devices' new ones. A change carries the whole row and the time it was made; for
 /// the same row the later change wins (ties: by device id), so every device ends up with the same
 /// data whatever the order the files arrive in. Deleted rows travel as deletions.
+///
+/// Shared budget: several people's devices use one folder. Rows of an account its owner hid from
+/// the others travel sealed a second time with that person's own key ([personCipher]), so only
+/// their devices can read them; a person's device without the key keeps them to itself. Hiding
+/// an account sends "hide" records: the other people's devices delete those rows.
 class SyncEngine {
   static const metaName = 'budget-sync.json';
   static final _fileRe = RegExp(r'^bs-([0-9a-f]{8})-(\d{8})\.bsync$');
@@ -36,7 +41,11 @@ class SyncEngine {
   final SyncCipher cipher;
   final String device;
 
-  SyncEngine(this.db, this.folder, this.cipher, this.device);
+  /// This device's person (shared budget) and that person's own key, if set up.
+  final String? person;
+  final SyncCipher? personCipher;
+
+  SyncEngine(this.db, this.folder, this.cipher, this.device, {this.person, this.personCipher});
 
   static String newDeviceId() {
     final r = Random.secure();
@@ -48,7 +57,7 @@ class SyncEngine {
   // --- The sync group: the folder's salt and a check value for the password ---
 
   /// Opens the folder's sync group with [password], creating it on the first device.
-  static Future<SyncCipher> openGroup(SyncFolder folder, String password) async {
+  static Future<SyncCipher> openGroup(SyncFolder folder, String password, {String metaName = metaName}) async {
     final raw = await folder.read(metaName);
     if (raw == null) {
       final salt = SyncCipher.newSalt();
@@ -69,26 +78,49 @@ class SyncEngine {
 
   /// Turns sync on for this device. A device without operations of its own (a fresh computer)
   /// takes the other devices' data as it is; otherwise everything it has is sent and merged.
-  Future<SyncReport> enable() async {
+  ///
+  /// Shared budget: [wipe] drops this device's data for the budget's. [beforeSend] marks a person
+  /// with data of their own who joins: [beforeTake] runs (making their accounts theirs before the
+  /// budget's built-in ones could merge with them), the budget's data is taken in, [beforeSend]
+  /// runs (merging categories), then all of theirs is sent — except the settings, which stay the
+  /// budget's.
+  Future<SyncReport> enable({bool wipe = false, Future<void> Function()? beforeTake, Future<void> Function()? beforeSend}) async {
     final others = (await folder.list()).map(_fileRe.firstMatch).whereType<RegExpMatch>().where((m) => m[1] != device);
     final hasOwn = (await db.rawQuery('SELECT COUNT(*) AS n FROM transactions')).first['n'] as int > 0;
+    final takeTheirs = others.isNotEmpty && (wipe || !hasOwn);
+    final joining = others.isNotEmpty && hasOwn && !wipe && beforeSend != null;
     await db.transaction((txn) async {
       await txn.update('sync_state', {'tracking': 0});
       await txn.delete('sync_outbox');
       await txn.delete('sync_rows');
       await txn.delete('sync_peers');
-      if (others.isNotEmpty && !hasOwn) {
+      if (takeTheirs) {
         for (final t in syncTables.reversed) {
           await txn.delete(t.name, where: t.rowFilter);
         }
-      } else {
+      }
+    });
+    if (joining) {
+      await beforeTake?.call();
+      await _import();
+      await beforeSend();
+    }
+    await db.transaction((txn) async {
+      await txn.update('sync_state', {'tracking': 0});
+      if (!takeTheirs) {
         final now = DateTime.now().millisecondsSinceEpoch;
         for (final t in syncTables) {
-          final where = t.rowFilter == null ? '' : ' WHERE ${t.rowFilter}';
+          if (joining && t.name == 'settings') continue;
+          final key = t.byUid ? 'uid' : t.keyCols.join(' || char(31) || ');
+          // Joining: only what is mine goes out, not the budget's rows just taken in.
+          final conditions = [
+            ?t.rowFilter,
+            if (joining) "($key) NOT IN (SELECT rkey FROM sync_rows WHERE tbl = '${t.name}')",
+          ];
+          final where = conditions.isEmpty ? '' : ' WHERE ${conditions.join(' AND ')}';
           if (t.byUid) {
             await txn.execute("INSERT INTO sync_outbox(tbl, rid, op, ts) SELECT '${t.name}', id, 'u', $now FROM ${t.name}$where");
           } else {
-            final key = t.keyCols.join(' || char(31) || ');
             await txn.execute("INSERT INTO sync_outbox(tbl, rkey, op, ts) SELECT '${t.name}', $key, 'u', $now FROM ${t.name}$where");
           }
         }
@@ -96,6 +128,34 @@ class SyncEngine {
       await txn.update('sync_state', {'tracking': 1});
     });
     return run();
+  }
+
+  /// What a shared budget's folder holds, read without changing anything here: its people
+  /// (uid -> name) and its setup (the "household" setting), for the questions before joining.
+  static Future<(Map<String, String>, String?)> peek(SyncFolder folder, SyncCipher cipher) async {
+    final people = <String, (int, String?)>{};
+    (int, String?)? household;
+    for (final name in await folder.list()) {
+      if (!_fileRe.hasMatch(name)) continue;
+      final data = await folder.read(name);
+      final plain = data == null ? null : await cipher.open(data);
+      if (plain == null) continue;
+      final body = jsonDecode(utf8.decode(plain)) as Map<String, dynamic>;
+      for (final r in (body['records'] as List).cast<Map<String, dynamic>>()) {
+        final ts = r['ts'] as int;
+        final row = r['r'] as Map<String, dynamic>?;
+        if (r['t'] == 'people') {
+          final k = r['k'] as String;
+          if ((people[k]?.$1 ?? -1) < ts) people[k] = (ts, r['o'] == 'd' ? null : row?['name'] as String?);
+        } else if (r['t'] == 'settings' && r['k'] == 'household' && (household?.$1 ?? -1) < ts) {
+          household = (ts, r['o'] == 'd' ? null : row?['value'] as String?);
+        }
+      }
+    }
+    return (
+      {for (final e in people.entries) if (e.value.$2 != null) e.key: e.value.$2!},
+      household?.$2,
+    );
   }
 
   /// Stops recording changes for sync (the folder's files stay).
@@ -122,10 +182,19 @@ class SyncEngine {
 
     // The last change of each row; a row changed ten times travels once, as it is now.
     final latest = <String, Map<String, Object?>>{};
+    final hidden = await _hiddenAccounts();
     for (final o in out) {
       final t = syncTable(o['tbl'] as String);
       var key = o['rkey'] as String?;
       Map<String, Object?>? row;
+      if (o['op'] == 'h') {
+        // Hidden from the other people: they delete it; my own devices keep it.
+        final rows = await db.query(t.name, columns: ['uid'], where: 'id = ?', whereArgs: [o['rid']]);
+        final uid = rows.firstOrNull?['uid'] as String?;
+        if (uid == null || person == null) continue;
+        latest['${t.name}\u0000$uid\u0000h'] = {'t': t.name, 'k': uid, 'o': 'h', 'ts': o['ts'], 'p': person};
+        continue;
+      }
       if (o['op'] == 'u') {
         final rows = t.byUid
             ? await db.query(t.name, where: 'id = ?', whereArgs: [o['rid']])
@@ -134,6 +203,14 @@ class SyncEngine {
         row = rows.first;
         if (t.byUid) key = row['uid'] as String?;
         if (key == null) continue;
+      }
+      final owner = row == null ? null : await _hiddenOwner(t, row, hidden);
+      if (owner != null) {
+        // Only this person's devices may read it; without their key it stays here.
+        if (owner != person || personCipher == null) continue;
+        final sealed = await personCipher!.seal(utf8.encode(jsonEncode(await _encode(t, row!))));
+        latest['${t.name}\u0000$key'] = {'t': t.name, 'k': key, 'o': 'u', 'ts': o['ts'], 'p': owner, 'x': base64Encode(sealed)};
+        continue;
       }
       latest['${t.name}\u0000$key'] = {
         't': t.name,
@@ -161,6 +238,31 @@ class SyncEngine {
     });
     await _setSetting('sync_last', '${DateTime.now().millisecondsSinceEpoch}');
     return records.length;
+  }
+
+  /// Hidden accounts here: local id -> owner.
+  Future<Map<int, String>> _hiddenAccounts() async {
+    final cols = await _columns(db, 'accounts');
+    if (!cols.contains('private')) return const {};
+    return {
+      for (final r in await db.query('accounts', columns: ['id', 'owner'], where: 'private = 1 AND owner IS NOT NULL'))
+        r['id'] as int: r['owner'] as String,
+    };
+  }
+
+  /// The owner of the hidden account [row] belongs to, or null when everyone may see it.
+  Future<String?> _hiddenOwner(SyncTable t, Map<String, Object?> row, Map<int, String> hidden) async {
+    if (hidden.isEmpty) return null;
+    switch (t.name) {
+      case 'accounts':
+        return hidden[row['id']];
+      case 'transactions' || 'goals' || 'recurring':
+        return hidden[row['account_id']];
+      case 'debts':
+        final txn = await db.query('transactions', columns: ['account_id'], where: 'id = ?', whereArgs: [row['txn_id']]);
+        return hidden[txn.firstOrNull?['account_id']];
+    }
+    return null;
   }
 
   /// A row as it travels: no local id, references as uids.
@@ -222,6 +324,15 @@ class SyncEngine {
         final t = syncTable(tableName);
         final key = r['k'] as String;
         final ts = r['ts'] as int;
+        // Another person's hidden rows can't be read here; my own "hide" doesn't apply to my devices.
+        final owner = r['p'] as String?;
+        if (owner != null && r['o'] == 'h' && owner == person) continue;
+        if (owner != null && r['o'] != 'h') {
+          if (owner != person || personCipher == null) continue;
+          final plain = await personCipher!.open(base64Decode(r['x'] as String));
+          if (plain == null) continue;
+          r['r'] = jsonDecode(utf8.decode(plain));
+        }
         final known = await txn.query('sync_rows', where: 'tbl = ? AND rkey = ?', whereArgs: [t.name, key]);
         if (known.isNotEmpty) {
           final kts = known.first['ts'] as int;
@@ -229,7 +340,7 @@ class SyncEngine {
           // Mine (or one already taken) is newer.
           if (kts > ts || (kts == ts && kdev.compareTo(dev) >= 0)) continue;
         }
-        final deleted = r['o'] == 'd';
+        final deleted = r['o'] == 'd' || r['o'] == 'h';
         if (deleted) {
           if (t.byUid) {
             await txn.delete(t.name, where: 'uid = ?', whereArgs: [key]);

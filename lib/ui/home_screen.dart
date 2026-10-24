@@ -6,6 +6,7 @@ import '../domain/budget_math.dart';
 import '../domain/currencies.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
+import '../household/household.dart' show BudgetScope;
 import '../l10n/strings.dart';
 import '../platform.dart';
 import '../state/app_state.dart';
@@ -39,6 +40,7 @@ class HomeScreen extends StatelessWidget {
       byDay.putIfAbsent(DateTime(t.time.year, t.time.month, t.time.day), () => []).add(t);
     }
     final items = <Widget>[
+      if (state.householdOn && state.household!.personalLimits) const BudgetScopeBar(),
       if (!state.captureStatus.allOn && !appIsDesktop) const _CaptureSetupBanner(),
       if (state.reviewQueue.isNotEmpty) _ReviewBanner(count: state.reviewQueue.length),
       if (state.staleAccounts.isNotEmpty && !state.staleHintHidden) _StaleBanner(accounts: state.staleAccounts),
@@ -343,10 +345,34 @@ class _CaptureSetupBanner extends StatelessWidget {
       );
 }
 
+/// Shared budget with limits of one's own: whose budget the screens show.
+class BudgetScopeBar extends StatelessWidget {
+  const BudgetScopeBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: SegmentedButton<BudgetScope>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(value: BudgetScope.common, label: Text(tr('hh_scope_common'), overflow: TextOverflow.ellipsis)),
+          ButtonSegment(value: BudgetScope.mine, label: Text(tr('hh_scope_mine'), overflow: TextOverflow.ellipsis)),
+          ButtonSegment(value: BudgetScope.all, label: Text(tr('hh_scope_all'), overflow: TextOverflow.ellipsis)),
+        ],
+        selected: {state.budgetScope},
+        onSelectionChanged: (s) => state.setBudgetScope(s.first),
+      ),
+    );
+  }
+}
+
 Future<void> editBudgetDialog(BuildContext context) async {
   final state = context.read<AppState>();
   final now = DateTime.now();
-  final current = state.rawMonthBudget(now);
+  // The common budget, also when the screen shows mine or everyone's (shared budget).
+  final current = state.commonBudget(now);
   final v = await askAmount(
     context,
     title: tr('budget_dialog'),

@@ -307,7 +307,18 @@ class CaptureImporter {
   /// Returns the number of new transactions.
   Future<int> importAll(List<CapturedPayment> payments) async {
     if (payments.isEmpty) return 0;
-    final accounts = await repo.accounts();
+    // Shared budget: my payments go to my own or the common accounts; the first one of a payment
+    // app whose account belongs to someone else gets an account of my own.
+    if (repo.me != null) {
+      final all = await repo.accounts();
+      final mine = await repo.myAccounts();
+      for (final app in payments.map((p) => p.app).toSet()) {
+        if (mine.any((a) => a.type == app)) continue;
+        final theirs = all.where((a) => a.type == app).firstOrNull;
+        if (theirs != null) await repo.addAccount(theirs.name, theirs.currency, app, owner: repo.me);
+      }
+    }
+    final accounts = await repo.myAccounts();
     final categories = await repo.categories();
     // Only Excel *expenses* mark the covered history: the income sheet may hold future, expected incomes.
     final excelUntil = await repo.lastDayOf('excel', TxnKind.expense);
@@ -330,11 +341,11 @@ class CaptureImporter {
       if (own != null) {
         accounts
           ..clear()
-          ..addAll(await repo.accounts());
+          ..addAll(await repo.myAccounts());
         return own;
       }
-      final id = await repo.addAccount(p.method ?? p.app, p.currency, p.app);
-      accounts.add(Account(id: id, name: p.method ?? p.app, currency: p.currency, type: p.app));
+      final id = await repo.addAccount(p.method ?? p.app, p.currency, p.app, owner: repo.me);
+      accounts.add(Account(id: id, name: p.method ?? p.app, currency: p.currency, type: p.app, owner: repo.me));
       return id;
     }
 
@@ -511,6 +522,9 @@ class CaptureImporter {
     }
     return n;
   }
+
+  /// For operations added from elsewhere (a bank statement): pairs a transfer to myself.
+  Future<bool> checkOwnTransfer(Txn t) => _ownTransfer(t);
 
   /// "Перевод между своими счетами", "перевод себе" in the bank's text.
   static final _toMyself = RegExp(

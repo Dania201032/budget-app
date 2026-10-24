@@ -19,6 +19,11 @@ class SyncService extends ChangeNotifier {
   SyncCipher? _cipher;
   String? _device;
 
+  /// Shared budget: whose device this is, and that person's own key (for accounts hidden from
+  /// the others), if they set a personal password.
+  String? person;
+  SyncCipher? personCipher;
+
   bool busy = false;
   String? lastError;
 
@@ -34,6 +39,8 @@ class SyncService extends ChangeNotifier {
   bool get enabled => _folder != null && _cipher != null && _device != null;
   String? get folderLabel => _folder?.label;
   String? get device => _device;
+  SyncFolder? get folder => _folder;
+  SyncCipher? get cipher => _cipher;
 
   /// The folder on disk (the computer), to watch for new files; null on the phone.
   String? get folderPath {
@@ -50,6 +57,9 @@ class SyncService extends ChangeNotifier {
       _folder = folderOf(kind, location, await repo.setting('sync_label') ?? location);
       _cipher = SyncCipher.fromKey(key);
     }
+    person = await repo.setting('sync_person');
+    final personKey = await SecureStore.instance.read('sync_person_key');
+    personCipher = personKey == null ? null : SyncCipher.fromKey(personKey);
     await _readTimes();
   }
 
@@ -77,14 +87,44 @@ class SyncService extends ChangeNotifier {
     return latest;
   }
 
+  /// This device belongs to [uid] (shared budget).
+  Future<void> setPerson(String? uid) async {
+    person = uid;
+    if (uid == null) {
+      await repo.db.delete('settings', where: 'key = ?', whereArgs: ['sync_person']);
+    } else {
+      await repo.setSetting('sync_person', uid);
+    }
+  }
+
+  /// The person's own key from their personal password: created with the first of their devices,
+  /// checked on the others (like the group's password). Throws [WrongSyncPassword].
+  static Future<SyncCipher> openPersonKey(SyncFolder folder, String person, String password) =>
+      SyncEngine.openGroup(folder, password, metaName: 'budget-person-$person.json');
+
+  /// Whether [person] already set a personal password (then their other devices must enter it).
+  static Future<bool> hasPersonKey(SyncFolder folder, String person) async =>
+      await folder.read('budget-person-$person.json') != null;
+
+  Future<void> setPersonCipher(SyncCipher? c) async {
+    personCipher = c;
+    await SecureStore.instance.write('sync_person_key', c == null ? null : await c.exportKey());
+  }
+
   static SyncFolder folderOf(String kind, String location, String label) =>
       kind == 'saf' ? SafSyncFolder(location, label) : IoSyncFolder(location);
 
   /// True when another device already syncs through [folder]: its password is asked once, not set twice.
   static Future<bool> hasGroup(SyncFolder folder) async => await folder.read(SyncEngine.metaName) != null;
 
-  /// Joins (or starts) sync through [folder]. Throws [WrongSyncPassword].
-  Future<SyncReport> connect(SyncFolder folder, String password, {required String kind, required String location}) async {
+  /// Joins (or starts) sync through [folder]. Throws [WrongSyncPassword]. [wipe] and [beforeSend]:
+  /// see [SyncEngine.enable] (a person joining a shared budget).
+  Future<SyncReport> connect(SyncFolder folder, String password,
+      {required String kind,
+      required String location,
+      bool wipe = false,
+      Future<void> Function()? beforeTake,
+      Future<void> Function()? beforeSend}) async {
     final cipher = await SyncEngine.openGroup(folder, password);
     final device = await repo.setting('sync_device') ?? SyncEngine.newDeviceId();
     await repo.setSetting('sync_device', device);
@@ -98,7 +138,8 @@ class SyncService extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final r = await SyncEngine(repo.db, folder, cipher, device).enable();
+      final r = await SyncEngine(repo.db, folder, cipher, device, person: person, personCipher: personCipher)
+          .enable(wipe: wipe, beforeTake: beforeTake, beforeSend: beforeSend);
       lastCheck = DateTime.now();
       await _readTimes();
       lastError = null;
@@ -112,10 +153,13 @@ class SyncService extends ChangeNotifier {
   Future<void> disconnect() async {
     await SyncEngine.disable(repo.db);
     // A new device id next time: its file numbers start again, and the others must not skip them.
-    for (final k in ['sync_kind', 'sync_folder', 'sync_label', 'sync_last', 'sync_seq', 'sync_device']) {
+    for (final k in ['sync_kind', 'sync_folder', 'sync_label', 'sync_last', 'sync_seq', 'sync_device', 'sync_person']) {
       await repo.db.delete('settings', where: 'key = ?', whereArgs: [k]);
     }
     await SecureStore.instance.write('sync_key', null);
+    await SecureStore.instance.write('sync_person_key', null);
+    person = null;
+    personCipher = null;
     _folder = null;
     _cipher = null;
     _device = null;
@@ -132,7 +176,7 @@ class SyncService extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final r = await SyncEngine(repo.db, _folder!, _cipher!, _device!).run();
+      final r = await SyncEngine(repo.db, _folder!, _cipher!, _device!, person: person, personCipher: personCipher).run();
       lastCheck = DateTime.now();
       await _readTimes();
       lastError = null;

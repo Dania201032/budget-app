@@ -77,5 +77,7 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     // AppCompat themes: the biometric prompt of the app lock crashes on Android 8 and older without them.
     implementation("androidx.appcompat:appcompat:1.7.0")
+    // Text of PDF bank statements (Sber, VTB), read on the phone.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     testImplementation("junit:junit:4.13.2")
 }

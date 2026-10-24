@@ -15,6 +15,16 @@ class Repository {
   /// Set by AppState: lets a friend pay back in another currency (100 ¥ owed, 1 200 ₽ received).
   CurrencyConverter? convert;
 
+  /// Shared budget: the person this device belongs to (null when the budget isn't shared). New
+  /// operations get them as author; capture uses only their own and common accounts, and never
+  /// takes another person's payment for a duplicate of mine.
+  String? me;
+
+  /// SQL condition: recorded on this person's devices (or before the budget was shared).
+  String get _mine => me == null ? '1 = 1' : "(author IS NULL OR author = '$me')";
+
+  bool _usable(Account a) => me == null || a.owner == null || a.owner == me;
+
   // --- Reference data ---
 
   Future<List<Category>> categories() async =>
@@ -45,11 +55,14 @@ class Repository {
   Future<List<Account>> accounts() async =>
       (await db.query('accounts', where: 'archived = 0', orderBy: 'sort, id')).map(Account.fromRow).toList();
 
-  Future<int> addAccount(String name, String currency, String type, {String? key}) async {
+  Future<int> addAccount(String name, String currency, String type, {String? key, String? owner}) async {
     final maxSort = Sqflite.firstIntValue(await db.rawQuery('SELECT MAX(sort) FROM accounts')) ?? 0;
     return db.insert('accounts',
-        {'name': name, 'currency': currency, 'type': type, 'key': key, 'sort': maxSort + 1});
+        {'name': name, 'currency': currency, 'type': type, 'key': key, 'sort': maxSort + 1, 'owner': ?owner});
   }
+
+  /// Accounts this device's person may record into: their own and the common ones.
+  Future<List<Account>> myAccounts() async => (await accounts()).where(_usable).toList();
 
   Future<void> updateAccount(int id, {required String name, required String currency, bool renamed = false}) =>
       db.update('accounts', {'name': name, 'currency': currency, if (renamed) 'key': null},
@@ -59,7 +72,7 @@ class Repository {
   /// the user created with the bank's name ("ВТБ", "Сбербанк", "Tinkoff") in [currency], which
   /// becomes linked. Null if the user has none.
   Future<int?> accountForBank(String key, String currency) async {
-    final all = await accounts();
+    final all = await myAccounts();
     final linked = all.where((a) => a.type == key).firstOrNull;
     if (linked != null) return linked.id;
     final named = all.where((a) => a.type == 'bank' && a.currency == currency && bankKeyForName(a.name) == key).firstOrNull;
@@ -72,7 +85,8 @@ class Repository {
   /// had one ("ВТБ" twice). Moves the operations of such an automatic account (no balance entered)
   /// to the user's account of that bank and removes it.
   Future<int> mergeDuplicateBankAccounts() async {
-    final all = await accounts();
+    // Never another person's account with mine.
+    final all = await myAccounts();
     var merged = 0;
     for (final auto in all.where((a) => bankAliases.containsKey(a.type) && a.balanceMinor == null)) {
       final target = all
@@ -569,7 +583,7 @@ class Repository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final b = db.batch();
     for (final t in txns) {
-      b.insert('transactions', {...t.toRow(), 'created_at': now});
+      b.insert('transactions', {...t.toRow(), 'author': t.author ?? me, 'created_at': now});
     }
     await b.commit(noResult: true);
   }
@@ -578,7 +592,7 @@ class Repository {
       (await db.query('transactions', where: 'needs_review = 1', orderBy: 'ts DESC')).map(Txn.fromRow).toList();
 
   Future<int> insertTxn(Txn t) =>
-      db.insert('transactions', {...t.toRow(), 'created_at': DateTime.now().millisecondsSinceEpoch});
+      db.insert('transactions', {...t.toRow(), 'author': t.author ?? me, 'created_at': DateTime.now().millisecondsSinceEpoch});
 
   Future<void> updateTxn(Txn t) => db.update('transactions', t.toRow(), where: 'id = ?', whereArgs: [t.id]);
 
@@ -623,7 +637,7 @@ class Repository {
     final to = DateTime(day.year, day.month, day.day + 1);
     final rows = await db.query(
       'transactions',
-      where: '(source LIKE ? OR (source = ? AND currency = ?)) AND kind = ? AND amount_minor = ? AND ts >= ? AND ts < ?',
+      where: '(source LIKE ? OR (source = ? AND currency = ?)) AND kind = ? AND amount_minor = ? AND ts >= ? AND ts < ? AND $_mine',
       whereArgs: [
         '$app:%', 'manual', currency, kind.name, amountMinor,
         from.millisecondsSinceEpoch, to.millisecondsSinceEpoch,
@@ -647,7 +661,7 @@ class Repository {
   }) async {
     final rows = await db.query(
       'transactions',
-      where: 'kind = ? AND amount_minor = ? AND currency = ? AND ts BETWEEN ? AND ?',
+      where: 'kind = ? AND amount_minor = ? AND currency = ? AND ts BETWEEN ? AND ? AND $_mine',
       whereArgs: [
         kind.name,
         amountMinor,
@@ -686,7 +700,7 @@ class Repository {
   }) async {
     final rows = await db.query(
       'transactions',
-      where: 'source LIKE ? AND kind = ? AND amount_minor = ? AND ts BETWEEN ? AND ?',
+      where: 'source LIKE ? AND kind = ? AND amount_minor = ? AND ts BETWEEN ? AND ? AND $_mine',
       whereArgs: [
         '$app:%',
         kind.name,
@@ -720,7 +734,7 @@ class Repository {
     final ms = time.millisecondsSinceEpoch;
     final rows = await db.query(
       'transactions',
-      where: "source LIKE ? AND source LIKE '%screen%' AND amount_minor = ? AND "
+      where: "source LIKE ? AND source LIKE '%screen%' AND amount_minor = ? AND $_mine AND "
           '((merchant IS ? AND ts BETWEEN ? AND ?) OR ts BETWEEN ? AND ?)',
       whereArgs: [
         '$app:%',
@@ -747,7 +761,7 @@ class Repository {
     if (raw.isEmpty) return false;
     final rows = await db.query(
       'transactions',
-      where: "source LIKE ? AND source LIKE '%notification%' AND amount_minor = ? AND instr(raw, ?) > 0 AND ts BETWEEN ? AND ?",
+      where: "source LIKE ? AND source LIKE '%notification%' AND amount_minor = ? AND instr(raw, ?) > 0 AND ts BETWEEN ? AND ? AND $_mine",
       whereArgs: [
         '$app:%',
         amountMinor,
@@ -771,7 +785,7 @@ class Repository {
     final ms = time.millisecondsSinceEpoch;
     final rows = await db.query(
       'transactions',
-      where: '((source LIKE ? AND ts BETWEEN ? AND ?) OR (source = ? AND ts BETWEEN ? AND ?)) '
+      where: '((source LIKE ? AND ts BETWEEN ? AND ?) OR (source = ? AND ts BETWEEN ? AND ?)) AND $_mine '
           'AND kind = ? AND amount_minor = ?',
       whereArgs: [
         '$appPrefix:%', ms - 180000, ms + 180000,

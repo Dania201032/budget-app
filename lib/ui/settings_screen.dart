@@ -14,10 +14,12 @@ import '../state/app_state.dart';
 import 'bank_log_screen.dart';
 import 'data_screens.dart';
 import 'home_screen.dart';
+import 'household_screen.dart';
 import 'ledger.dart';
 import 'lock_screen.dart';
 import 'onboarding.dart';
 import 'recurring_screen.dart';
+import 'statement_import_screen.dart';
 import 'sync_screen.dart';
 import 'widgets.dart';
 
@@ -110,6 +112,13 @@ class SettingsScreen extends StatelessWidget {
           valueColor: state.sync.enabled ? good : null,
           onTap: () => push(const SyncScreen()),
         ),
+        LedgerTile(
+          tr('hh_title'),
+          hint: tr('hh_tile_sub'),
+          value: state.householdOn ? state.people.map((p) => p.name).join(', ') : tr('lock_value_off'),
+          valueColor: state.householdOn ? good : null,
+          onTap: () => push(const HouseholdScreen()),
+        ),
         // The computer keeps its copy through sync; backups to a folder are the phone's.
         if (!appIsDesktop)
           LedgerTile(
@@ -121,6 +130,7 @@ class SettingsScreen extends StatelessWidget {
           onTap: () => push(const BackupScreen()),
         ),
         LedgerTile(tr('export'), value: tr('export_sub'), onTap: () => showExportSheet(context)),
+        LedgerTile(tr('stmt_title'), hint: tr('stmt_tile_sub'), onTap: () => push(const StatementImportScreen())),
         LedgerTile(tr('import_excel'), hint: tr('import_excel_sub'), onTap: () => push(const SheetImportScreen())),
         if (Platform.isAndroid) ...[
           LedgerSection(tr('w_section')),

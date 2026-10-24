@@ -13,6 +13,8 @@ import '../domain/budget_math.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
 import '../domain/runway.dart';
+import '../household/household.dart';
+import '../import/statement_import.dart';
 import '../io/app_log.dart';
 import '../io/backup.dart';
 import '../io/home_widgets.dart';
@@ -55,6 +57,66 @@ class AppState extends ChangeNotifier {
   bool captureConsent = false;
   List<Category> categories = [];
   List<Account> accounts = [];
+
+  // --- Shared budget (lib/household/) ---
+  HouseholdConfig? household;
+  List<Person> people = [];
+
+  /// Whose budget the screens show when people have limits of their own.
+  BudgetScope budgetScope = BudgetScope.all;
+  final Map<String, int> _personalBudgets = {};
+
+  /// This device takes part in a shared budget.
+  bool get householdOn => household != null && sync.person != null;
+  String? get me => householdOn ? sync.person : null;
+  Person? personOf(String? uid) => uid == null ? null : people.where((p) => p.uid == uid).firstOrNull;
+  bool get _scoped => householdOn && household!.personalLimits && budgetScope != BudgetScope.all;
+
+  /// A person's own limit in base currency (shared budget with personal limits).
+  int personalBudget(String uid) => _personalBudgets[uid] ?? 0;
+
+  bool _inScope(Txn t) {
+    final owner = t.accountId == null ? null : accountById[t.accountId]?.owner;
+    return budgetScope == BudgetScope.common ? owner == null : owner == me;
+  }
+
+  Future<void> _loadHousehold() async {
+    household = await repo.household();
+    people = await repo.people();
+    repo.me = householdOn ? sync.person : null;
+    budgetScope = BudgetScope.values.asNameMap()[await repo.setting('budget_scope')] ?? BudgetScope.all;
+    _personalBudgets.clear();
+    if (householdOn && household!.personalLimits) {
+      final now = DateTime.now();
+      for (final p in people) {
+        final b = await repo.personalBudget(p.uid);
+        if (b != null) _personalBudgets[p.uid] = rates.toBase(b.$1, b.$2, now) ?? b.$1;
+      }
+    }
+  }
+
+  /// After the shared budget was set up, joined, left or changed.
+  Future<void> reloadHousehold() async {
+    await _loadHousehold();
+    accounts = await repo.accounts();
+    _changed();
+    await _reloadAll();
+  }
+
+  Future<void> setBudgetScope(BudgetScope s) async {
+    budgetScope = s;
+    await repo.setSetting('budget_scope', s.name);
+    await _reloadAll();
+  }
+
+  /// A person's own monthly limit (shared budget), in base currency.
+  Future<void> setPersonalBudget(String person, int amountMinor) async {
+    await repo.setPersonalBudget(person, amountMinor, baseCurrency);
+    await reloadHousehold();
+  }
+
+  /// The common monthly budget as set, whatever budget the screens show.
+  int commonBudget(DateTime m) => budgetEnabled ? _budgets[DateTime(m.year, m.month)] ?? 0 : 0;
   Map<int, int> balances = {};
   List<Goal> goals = [];
   List<Debt> openDebts = [];
@@ -154,6 +216,7 @@ class AppState extends ChangeNotifier {
     await capture.setLanguage(currentLanguage);
     await rates.load(baseCurrency);
     AppLog.line('init: rates loaded');
+    await _loadHousehold();
     // Once: names and notes recorded before the parsers were fixed (v0.8.8).
     if (await repo.setting('cleanup_names') == null) {
       await repo.cleanUpCapturedNames();
@@ -225,6 +288,20 @@ class AppState extends ChangeNotifier {
     return r;
   }
 
+  /// [connectSync] for a person joining a shared budget (see SyncEngine.enable).
+  Future<SyncReport> connectSyncAs(SyncFolder folder, String password,
+      {required String kind,
+      required String location,
+      bool wipe = false,
+      Future<void> Function()? beforeTake,
+      Future<void> Function()? beforeSend}) async {
+    final r = await sync.connect(folder, password,
+        kind: kind, location: location, wipe: wipe, beforeTake: beforeTake, beforeSend: beforeSend);
+    _budgets.clear();
+    await init(syncAfter: false);
+    return r;
+  }
+
   Future<void> disconnectSync() async {
     await _folderWatch?.cancel();
     _folderWatch = null;
@@ -234,6 +311,8 @@ class AppState extends ChangeNotifier {
   /// Pulls freshly captured payments, then reloads everything shown on screen.
   Future<void> refresh() async {
     captureStatus = await capture.status();
+    // The other devices may have changed the shared budget's people and limits.
+    await _loadHousehold();
     final imported = await _importer.importAll(await capture.consumeInbox());
     if (imported > 0) _dirty = true;
     // A hand-made "ВТБ" and the one automatic recording made for the same bank become one.
@@ -278,6 +357,13 @@ class AppState extends ChangeNotifier {
     analyticsTxns = await repo.txnsBetween(analyticsPeriod.start, analyticsPeriod.end);
     final sixAgo = DateTime(now.year, now.month - 5);
     _sixMonthTxns = await repo.txnsBetween(sixAgo, DateTime(now.year, now.month + 1));
+    if (_scoped) {
+      _currentMonthTxns = _currentMonthTxns.where(_inScope).toList();
+      homeTxns = homeTxns.where(_inScope).toList();
+      periodTxns = periodTxns.where(_inScope).toList();
+      analyticsTxns = analyticsTxns.where(_inScope).toList();
+      _sixMonthTxns = _sixMonthTxns.where(_inScope).toList();
+    }
     _markFresh();
     await _loadBudgets({
       for (final d in analyticsPeriod.days) DateTime(d.year, d.month),
@@ -401,11 +487,22 @@ class AppState extends ChangeNotifier {
   }
 
   /// Monthly budget in base currency (as set by the user), 0 when the budget is off.
-  int rawMonthBudget(DateTime m) => budgetEnabled ? _budgets[DateTime(m.year, m.month)] ?? 0 : 0;
+  int rawMonthBudget(DateTime m) {
+    if (!budgetEnabled) return 0;
+    final common = _budgets[DateTime(m.year, m.month)] ?? 0;
+    // Shared budget with limits of one's own: the common one, mine, or all of them together.
+    if (!householdOn || !household!.personalLimits) return common;
+    return switch (budgetScope) {
+      BudgetScope.common => common,
+      BudgetScope.mine => _personalBudgets[me] ?? 0,
+      BudgetScope.all => common + _personalBudgets.values.fold(0, (a, b) => a + b),
+    };
+  }
 
   /// Money set aside for goals in [m] (goals with "reserve from budget"), in base currency.
   int goalReserve(DateTime m) {
-    if (!budgetEnabled) return 0;
+    // Goals are the household's: they come out of the common limit, not a person's own.
+    if (!budgetEnabled || (_scoped && budgetScope == BudgetScope.mine)) return 0;
     final now = DateTime.now();
     return goals
         .where((g) => g.reservesIn(m))
@@ -1061,6 +1158,14 @@ class AppState extends ChangeNotifier {
     _changed();
     await _reloadAll();
     _updateRates();
+  }
+
+  /// Adds a bank statement's missing operations (see lib/import/). Returns how many were added.
+  Future<int> applyStatement(StatementPlan plan) async {
+    final added = await applyStatementImport(repo, plan);
+    _changed();
+    await refresh();
+    return added;
   }
 
   /// Transactions for export: all of them or only the given period (oldest first).

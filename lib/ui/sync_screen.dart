@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../household/household_flow.dart';
 import '../l10n/strings.dart';
 import '../platform.dart';
 import '../state/app_state.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_folder.dart';
 import '../sync/sync_service.dart';
+import 'household_screen.dart';
 import 'ledger.dart';
 import 'lock_screen.dart';
 
@@ -96,6 +98,32 @@ class SyncScreen extends StatelessWidget {
     if (!context.mounted) return;
     final password = await _askPassword(context, newGroup: !exists);
     if (password == null || !context.mounted) return;
+    // A shared budget's folder is joined as a person (Settings → Shared budget), not as a plain device.
+    if (exists) {
+      try {
+        final invite = await readInvite(folder, password);
+        if (!context.mounted) return;
+        if (!invite.isPlainSync) {
+          final go = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              content: Text(tr('hh_use_join')),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('hh_join'))),
+              ],
+            ),
+          );
+          if (go == true && context.mounted) {
+            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HouseholdJoinScreen()));
+          }
+          return;
+        }
+      } on WrongSyncPassword {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('sync_wrong_password'))));
+        return;
+      }
+    }
 
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);

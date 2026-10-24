@@ -23,13 +23,18 @@ class SyncTable {
 }
 
 /// Settings that are the same on all devices; the rest (language, backup folder, capture…) are per device.
+/// "household" is the shared budget's setup; `pbudget:<person>` a person's own monthly limit.
 const syncedSettings = [
   'base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', 'daily_limit',
-  'self_names', 'runway_config', 'country',
+  'self_names', 'runway_config', 'country', 'household',
 ];
+
+const _settingsFilter = "(key IN ('base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', "
+    "'daily_limit', 'self_names', 'runway_config', 'country', 'household') OR key LIKE 'pbudget:%')";
 
 /// In dependency order: parents before the rows that refer to them.
 const syncTables = [
+  SyncTable('people'),
   SyncTable('categories'),
   SyncTable('accounts'),
   SyncTable('goals', refs: {'account_id': 'accounts'}),
@@ -39,8 +44,7 @@ const syncTables = [
   SyncTable('budgets', keyCols: ['month']),
   SyncTable('merchant_rules', keyCols: ['merchant', 'kind'], refs: {'category_id': 'categories'}),
   SyncTable('manual_rates', keyCols: ['base', 'quote']),
-  SyncTable('settings', keyCols: ['key'], rowFilter: "key IN ('base_currency', 'budget_enabled', 'default_budget_minor', "
-      "'default_budget_currency', 'daily_limit', 'self_names', 'runway_config', 'country')"),
+  SyncTable('settings', keyCols: ['key'], rowFilter: _settingsFilter),
 ];
 
 SyncTable syncTable(String name) => syncTables.firstWhere((t) => t.name == name);
@@ -55,7 +59,7 @@ String _keyExpr(SyncTable t, String row) => t.keyCols.map((c) => '$row.$c').join
 String _filter(SyncTable t, String row) {
   final f = t.rowFilter;
   if (f == null) return '';
-  return ' AND ${f.replaceFirst('key', '$row.key')}';
+  return ' AND ${f.replaceAll(RegExp(r'\bkey\b'), '$row.key')}';
 }
 
 /// v9: uids, the change log the triggers fill while sync is on, and what is known of other devices.
@@ -140,5 +144,35 @@ Future<void> createSyncTriggers(Database db, SyncTable t) async {
           INSERT INTO sync_outbox(tbl, rkey, op, ts) VALUES ('$n', ${_keyExpr(t, row)}, '$op', $_now);
         END''');
     }
+  }
+}
+
+/// v10: the shared budget for two (or more). People, who owns an account (null: common) and
+/// whether the others may see it, who recorded an operation.
+Future<void> migrateHouseholdV10(Database db) async {
+  final existing = {
+    for (final r in await db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) r['name'] as String,
+  };
+  await db.execute('''
+    CREATE TABLE people(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uid TEXT,
+      name TEXT NOT NULL,
+      color INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    )''');
+  await db.execute('CREATE UNIQUE INDEX idx_people_uid ON people(uid)');
+  if (existing.contains('accounts')) {
+    await db.execute('ALTER TABLE accounts ADD COLUMN owner TEXT');
+    await db.execute('ALTER TABLE accounts ADD COLUMN private INTEGER NOT NULL DEFAULT 0');
+  }
+  if (existing.contains('transactions')) await db.execute('ALTER TABLE transactions ADD COLUMN author TEXT');
+  if (existing.contains('sync_state')) {
+    await createSyncTriggers(db, syncTable('people'));
+    // The settings that travel now include the shared budget's.
+    for (final e in ['insert', 'update', 'delete']) {
+      await db.execute('DROP TRIGGER IF EXISTS sync_settings_$e');
+    }
+    if (existing.contains('settings')) await createSyncTriggers(db, syncTable('settings'));
   }
 }
