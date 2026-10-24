@@ -37,19 +37,25 @@ void main() {
     return state.goals.last;
   }
 
-  Future<Txn> purchase(int minor) async {
-    final id = await state.repo.insertTxn(Txn(time: t0, amountMinor: minor, currency: 'CNY', kind: TxnKind.expense, merchant: 'Shop'));
+  Future<Txn> purchase(int minor, {int? account, int? category}) async {
+    final id = await state.repo.insertTxn(Txn(
+        time: t0, amountMinor: minor, currency: 'CNY', kind: TxnKind.expense, merchant: 'Shop', accountId: account, categoryId: category));
     return (await state.repo.txnById(id))!;
   }
 
-  test('fully: the savings pay, the goal closes, the purchase is not in the budget', () async {
+  test('fully: the savings pay, no account moves again, the category stays, the goal closes', () async {
+    final card = (await state.repo.accounts()).firstWhere((a) => a.type == 'alipay').id;
+    await state.repo.setAccountBalance(card, 1000000, t0.subtract(const Duration(days: 1)));
     final g = await goal(500000, 480000);
-    final t = await purchase(450000);
+    final shopping = state.categories.firstWhere((c) => c.key == 'shopping').id;
+    final t = await purchase(450000, account: card, category: shopping);
     await state.spendFromGoal(t, g, close: true);
     final after = (await state.repo.txnById(t.id!))!;
     expect(after.goalId, g.id);
     expect(after.excluded, isTrue);
-    expect(after.categoryId, isNull);
+    expect(after.accountId, isNull);
+    expect(after.categoryId, shopping);
+    expect((await state.repo.accountBalances())[card], 1000000);
     expect(state.goals, isEmpty);
     expect((await state.repo.goalById(g.id))!.savedMinor, 30000);
     expect(state.goalNames[g.id], 'Laptop');
@@ -63,24 +69,43 @@ void main() {
     expect((await state.repo.txnById(t.id!))!.excluded, isTrue);
   });
 
-  test('more than was saved: the savings are used up and the purchase still counts', () async {
+  test('more than was saved: the savings pay their part, the rest is an ordinary purchase', () async {
+    final card = (await state.repo.accounts()).firstWhere((a) => a.type == 'alipay').id;
     final g = await goal(500000, 20000);
-    final t = await purchase(50000);
+    final t = await purchase(50000, account: card);
     await state.spendFromGoal(t, g, close: false);
     expect(state.goals.single.savedMinor, 0);
-    expect((await state.repo.txnById(t.id!))!.excluded, isFalse);
+    final rest = (await state.repo.txnById(t.id!))!;
+    expect(rest.amountMinor, 30000);
+    expect(rest.accountId, card);
+    expect(rest.excluded, isFalse);
+    final paid = (await state.repo.allTxns()).firstWhere((x) => x.goalId == g.id);
+    expect(paid.amountMinor, 20000);
+    expect(paid.excluded, isTrue);
+    expect(paid.accountId, isNull);
   });
 
-  test('a category instead: the money goes back and the goal opens again', () async {
+  test('not from the goal after all: the money goes back and the goal opens again', () async {
     final g = await goal(500000, 480000);
     final t = await purchase(450000);
     await state.spendFromGoal(t, g, close: true);
-    final food = state.categories.firstWhere((c) => c.key == 'food');
-    await state.categorize((await state.repo.txnById(t.id!))!, food);
+    final card = (await state.repo.accounts()).firstWhere((a) => a.type == 'alipay').id;
+    await state.returnToGoal((await state.repo.txnById(t.id!))!, accountId: card);
     final after = (await state.repo.txnById(t.id!))!;
     expect(after.goalId, isNull);
     expect(after.excluded, isFalse);
-    expect(after.categoryId, food.id);
+    expect(after.accountId, card);
     expect(state.goals.single.savedMinor, 480000);
+  });
+
+  test('from the goal card: a purchase recorded straight from the savings', () async {
+    final g = await goal(500000, 500000);
+    await state.buyFromGoal(g, 500000, merchant: 'Laptop shop', close: true);
+    final t = (await state.repo.allTxns()).single;
+    expect(t.merchant, 'Laptop shop');
+    expect(t.goalId, g.id);
+    expect(t.accountId, isNull);
+    expect(t.excluded, isTrue);
+    expect(state.goals, isEmpty);
   });
 }

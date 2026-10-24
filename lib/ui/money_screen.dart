@@ -205,6 +205,12 @@ class _GoalCard extends StatelessWidget {
       if (r != null) await state.addToGoal(goal, add ? r.$1 : -r.$1, accountId: r.$2);
     }
 
+    /// "Close a goal": what was bought with the savings, fully reaching the goal or not.
+    Future<void> close() async {
+      final r = await _askGoalPurchase(context, goal);
+      if (r != null) await state.buyFromGoal(goal, r.$1, merchant: r.$2, close: r.$3);
+    }
+
     Future<void> delete() async {
       final messenger = ScaffoldMessenger.of(context);
       await state.deleteGoal(goal);
@@ -243,12 +249,14 @@ class _GoalCard extends StatelessWidget {
                   'edit' => editGoal(context, goal: goal),
                   'add' => move(true),
                   'take' => move(false),
+                  'close' => close(),
                   _ => delete(),
                 },
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(tr('edit')))),
                   PopupMenuItem(value: 'add', child: ListTile(leading: const Icon(Icons.add), title: Text(tr('put_aside')))),
                   PopupMenuItem(value: 'take', child: ListTile(leading: const Icon(Icons.remove), title: Text(tr('take_out')))),
+                  PopupMenuItem(value: 'close', child: ListTile(leading: const Icon(Icons.flag_outlined), title: Text(tr('goal_close')))),
                   PopupMenuItem(value: 'delete', child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(tr('delete')))),
                 ],
               ),
@@ -270,6 +278,7 @@ class _GoalCard extends StatelessWidget {
               Text(tr('goal_reserve_sub'), style: theme.textTheme.bodySmall),
             // Stacks the buttons when long labels don't fit side by side.
             OverflowBar(alignment: MainAxisAlignment.end, overflowAlignment: OverflowBarAlignment.end, children: [
+              TextButton(onPressed: close, child: Text(tr('goal_close'))),
               TextButton(onPressed: () => move(false), child: Text(tr('take_out'))),
               FilledButton.tonal(onPressed: () => move(true), child: Text(tr('put_aside'))),
             ]),
@@ -279,6 +288,53 @@ class _GoalCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What the savings bought: amount (the savings by default), what it was, and whether the goal is
+/// reached (closed) or only this amount is taken from it.
+Future<(int, String, bool)?> _askGoalPurchase(BuildContext context, Goal goal) {
+  final amount = TextEditingController(text: goal.savedMinor > 0 ? (goal.savedMinor / 100).toStringAsFixed(goal.savedMinor % 100 == 0 ? 0 : 2) : '');
+  final what = TextEditingController(text: goal.name);
+  var full = true;
+  return showDialog<(int, String, bool)>(
+    context: context,
+    builder: (c) => StatefulBuilder(
+      builder: (c, setState) => AlertDialog(
+        title: Text(tr('goal_close')),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            TextField(
+              controller: amount,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: tr('goal_spent'), suffixText: currencySymbol(goal.currency)),
+            ),
+            TextField(controller: what, decoration: InputDecoration(labelText: tr('goal_bought'))),
+            const SizedBox(height: 8),
+            RadioGroup<bool>(
+              groupValue: full,
+              onChanged: (v) => setState(() => full = v ?? true),
+              child: Column(children: [
+                RadioListTile<bool>(value: true, contentPadding: EdgeInsets.zero, title: Text(tr('goal_close_full')), subtitle: Text(tr('goal_close_full_sub'))),
+                RadioListTile<bool>(value: false, contentPadding: EdgeInsets.zero, title: Text(tr('goal_close_part')), subtitle: Text(tr('goal_close_part_sub'))),
+              ]),
+            ),
+            Text(tr('goal_no_account_hint'), style: Theme.of(c).textTheme.bodySmall),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('cancel'))),
+          FilledButton(
+            onPressed: () {
+              final v = parseAmountToMinor(amount.text);
+              if (v != null) Navigator.pop(c, (v, what.text, full));
+            },
+            child: Text(tr('ok')),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Amount + optional account ("from" when putting aside, "to" when taking out).

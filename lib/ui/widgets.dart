@@ -343,6 +343,10 @@ class TxnTile extends StatelessWidget {
           const SizedBox(width: 4),
           Icon(Icons.swap_horiz, size: 16, color: scheme.outline),
         ],
+        if (txn.goalId != null) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.flag, size: 16, color: scheme.outline),
+        ],
         // Shared budget: who recorded it, when it wasn't me.
         if (state.householdOn && txn.author != null && txn.author != state.me && state.personOf(txn.author) != null) ...[
           const SizedBox(width: 6),
@@ -369,7 +373,7 @@ class TxnTile extends StatelessWidget {
           if (txn.source == 'goal')
             Text(tr('goal_transfer', [txn.merchant ?? '']), style: small)
           else if (txn.goalId != null)
-            Text(tr(txn.excluded ? 'goal_paid' : 'goal_paid_part'), style: small)
+            Text(tr('goal_paid_from', [goalName ?? '']), style: small)
           else if (txn.ownTransfer)
             Text(tr('own_transfer_short'), style: small)
           else if (txn.excluded)

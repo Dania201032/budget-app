@@ -233,6 +233,11 @@ class AppState extends ChangeNotifier {
       await _importer.pairEarlierTransfers();
       await repo.setSetting('own_transfers_paired', '2');
     }
+    // Once after v0.13.2: purchases paid from a goal took the money from the account a second time.
+    if (await repo.setting('goal_purchases_off_accounts') == null) {
+      await repo.db.update('transactions', {'account_id': null}, where: 'goal_id IS NOT NULL AND excluded = 1');
+      await repo.setSetting('goal_purchases_off_accounts', '1');
+    }
     await refresh();
     AppLog.line('init: refreshed');
     // The phone keeps the reminders even if the app was not opened for a while; refresh them.
@@ -635,11 +640,6 @@ class AppState extends ChangeNotifier {
 
   /// Quick categorization from the review list; also teaches the merchant rule.
   Future<void> categorize(Txn t, Category c) async {
-    // A purchase paid from a goal that turns out to be ordinary spending: the money goes back.
-    if (t.goalId != null) {
-      await returnToGoal(t);
-      t = await repo.txnById(t.id!) ?? t;
-    }
     await saveTxn(t.copyWith(categoryId: () => c.id, kind: c.kind, needsReview: t.amountMinor == 0));
   }
 
@@ -897,28 +897,51 @@ class AppState extends ChangeNotifier {
     await _goalsChanged();
   }
 
-  /// "Close a goal": [t] is paid from [g]'s savings. Its amount (at most what was saved) leaves
-  /// the goal; covered by the savings, the purchase is not spending of the month's budget (the
-  /// money was set aside before). [close]: the goal is reached and closed.
+  /// "Close a goal": [t] is paid from [g]'s savings. The money left its account when it was put
+  /// aside, so the purchase moves no account balance again, and it isn't spending of the month's
+  /// budget either; it keeps its category. Savings short of the price pay their part: the rest
+  /// stays an ordinary purchase from the account. [close]: the goal is reached and closed.
   Future<void> spendFromGoal(Txn t, Goal g, {required bool close}) async {
     if (t.goalId != null && t.goalId != g.id) await returnToGoal(t);
-    final inGoal = rates.convert(t.amountMinor, t.currency, g.currency, t.time) ?? t.amountMinor;
-    final fresh = await repo.goalById(g.id) ?? g;
-    final taken = t.goalId == g.id ? 0 : inGoal.clamp(0, fresh.savedMinor);
-    if (taken > 0) await repo.addToGoal(g.id, -taken);
-    await repo.updateTxn(t.copyWith(
-      goalId: () => g.id,
-      categoryId: () => null,
-      excluded: taken >= inGoal || t.goalId == g.id,
-      needsReview: false,
-      merchant: () => t.merchant ?? g.name,
-    ));
+    if (t.goalId != g.id) {
+      final inGoal = rates.convert(t.amountMinor, t.currency, g.currency, t.time) ?? t.amountMinor;
+      final fresh = await repo.goalById(g.id) ?? g;
+      final taken = inGoal.clamp(0, fresh.savedMinor);
+      if (taken > 0) await repo.addToGoal(g.id, -taken);
+      final takenHere = taken >= inGoal ? t.amountMinor : (rates.convert(taken, g.currency, t.currency, t.time) ?? taken);
+      Txn fromGoal(Txn x, int amount) => x.copyWith(
+            amountMinor: amount,
+            shareMinor: () => null,
+            goalId: () => g.id,
+            accountId: () => null,
+            excluded: true,
+            needsReview: false,
+            merchant: () => x.merchant ?? g.name,
+          );
+      if (takenHere >= t.amountMinor) {
+        await repo.updateTxn(fromGoal(t, t.amountMinor));
+      } else if (takenHere > 0) {
+        await repo.updateTxn(t.copyWith(amountMinor: t.amountMinor - takenHere, shareMinor: () => null));
+        await repo.insertTxn(Txn(
+          time: t.time,
+          amountMinor: takenHere,
+          currency: t.currency,
+          kind: TxnKind.expense,
+          categoryId: t.categoryId,
+          merchant: t.merchant ?? g.name,
+          note: t.note,
+          excluded: true,
+          goalId: g.id,
+        ));
+      }
+    }
     if (close) await repo.archiveGoal(g.id);
     await _goalsChanged();
   }
 
-  /// Undoes [spendFromGoal] when the purchase gets a category instead: the money goes back.
-  Future<void> returnToGoal(Txn t) async {
+  /// Undoes [spendFromGoal]: the money goes back to the goal, the purchase is ordinary spending
+  /// again (from the account [accountId], if given).
+  Future<void> returnToGoal(Txn t, {int? accountId}) async {
     final id = t.goalId;
     if (id == null) return;
     final g = await repo.goalById(id);
@@ -927,8 +950,21 @@ class AppState extends ChangeNotifier {
       if (t.excluded) await repo.addToGoal(id, inGoal);
       await repo.unarchiveGoal(id);
     }
-    await repo.updateTxn(t.copyWith(goalId: () => null, excluded: false));
+    await repo.updateTxn(t.copyWith(goalId: () => null, excluded: false, accountId: () => accountId ?? t.accountId));
     await _goalsChanged();
+  }
+
+  /// A purchase recorded from the goal itself (Money → goal → "Close a goal").
+  Future<void> buyFromGoal(Goal g, int amountMinor, {String? merchant, required bool close}) async {
+    final id = await repo.insertTxn(Txn(
+      time: DateTime.now(),
+      amountMinor: amountMinor,
+      currency: g.currency,
+      kind: TxnKind.expense,
+      merchant: merchant == null || merchant.trim().isEmpty ? g.name : merchant.trim(),
+    ));
+    final t = await repo.txnById(id);
+    if (t != null) await spendFromGoal(t, g, close: close);
   }
 
   Future<void> _goalsChanged() async {

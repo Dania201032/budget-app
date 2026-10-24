@@ -190,7 +190,7 @@ class _TxnEditorState extends State<TxnEditor> {
       if (_goalChosen && goal != null) {
         await state.spendFromGoal(savedTxn, goal, close: _closeGoal);
       } else if (base.goalId != null && _goalId == null) {
-        await state.returnToGoal(savedTxn);
+        await state.returnToGoal(savedTxn, accountId: _accountId);
       }
     }
     if (!keepShare && base.isSplit) await state.removeSplit(txn);
@@ -464,6 +464,50 @@ class _TxnEditorState extends State<TxnEditor> {
                       : tr('split_bill')),
                 ),
               ),
+            // Paid from a goal's savings: the money left the account when it was put aside.
+            if (_kind == TxnKind.expense && !_ownTransfer && (state.goals.isNotEmpty || _goalId != null))
+              Row(children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final r = await chooseGoalSpend(context, state);
+                        if (r == null || !mounted) return;
+                        setState(() {
+                          _goalId = r.$1.id;
+                          _closeGoal = r.$2;
+                          _goalChosen = true;
+                        });
+                      },
+                      icon: Icon(_goalId == null ? Icons.outlined_flag : Icons.flag, size: 18),
+                      label: Text(
+                        _goalId == null
+                            ? tr('goal_close')
+                            : [
+                                tr('goal_from', [state.goalNames[_goalId] ?? '']),
+                                if (_goalChosen) tr(_closeGoal ? 'goal_close_full' : 'goal_close_part'),
+                              ].join(' · '),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                if (_goalId != null)
+                  IconButton(
+                    tooltip: tr('goal_unlink'),
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() {
+                      _goalId = null;
+                      _goalChosen = false;
+                    }),
+                  ),
+              ]),
+            if (_goalId != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, bottom: 4),
+                child: Text(tr('goal_no_account_hint'), style: Theme.of(context).textTheme.bodySmall),
+              ),
             LedgerSection(tr('category'), padding: const EdgeInsets.only(top: 6, bottom: 8)),
             Container(
               color: rule,
@@ -482,31 +526,7 @@ class _TxnEditorState extends State<TxnEditor> {
                       name: state.categoryName(c),
                       color: Color(c.color),
                       selected: _categoryId == c.id,
-                      onTap: () => setState(() {
-                        _categoryId = _categoryId == c.id ? null : c.id;
-                        if (_categoryId != null) _goalId = null;
-                      }),
-                    ),
-                  // A purchase the savings of a goal paid for.
-                  if (_kind == TxnKind.expense && !_ownTransfer && (state.goals.isNotEmpty || _goalId != null))
-                    _CategoryCell(
-                      name: _goalId == null ? tr('goal_close') : tr('goal_from', [state.goalNames[_goalId] ?? '']),
-                      color: Ledger.accentOf(context),
-                      selected: _goalId != null,
-                      onTap: () async {
-                        if (_goalId != null) {
-                          setState(() => _goalId = null);
-                          return;
-                        }
-                        final r = await chooseGoalSpend(context, state);
-                        if (r == null || !mounted) return;
-                        setState(() {
-                          _goalId = r.$1.id;
-                          _closeGoal = r.$2;
-                          _goalChosen = true;
-                          _categoryId = null;
-                        });
-                      },
+                      onTap: () => setState(() => _categoryId = _categoryId == c.id ? null : c.id),
                     ),
                 ],
               ),

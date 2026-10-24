@@ -297,18 +297,28 @@ class _OperationsPageState extends State<OperationsPage> {
             final c = await _pickCategory(context, s, t.kind);
             if (c != null) await s.categorize(t, c);
           }),
-          // A purchase the savings of a goal paid for.
-          if (t.kind == TxnKind.expense && !t.ownTransfer && (s.goals.isNotEmpty || t.goalId != null))
-            Pill(
+        ]),
+        // Paid from a goal's savings: the money left the account when it was put aside.
+        if (t.kind == TxnKind.expense && !t.ownTransfer && (s.goals.isNotEmpty || t.goalId != null)) ...[
+          const SizedBox(height: 10),
+          Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            DeskButton(
               t.goalId == null ? tr('goal_close') : tr('goal_from', [s.goalNames[t.goalId] ?? '']),
-              selected: t.goalId != null,
+              icon: t.goalId == null ? Icons.outlined_flag : Icons.flag,
+              small: true,
               onTap: () async {
-                if (t.goalId != null) return s.returnToGoal(t);
                 final r = await chooseGoalSpend(context, s);
                 if (r != null) await s.spendFromGoal(t, r.$1, close: r.$2);
               },
             ),
-        ]),
+            if (t.goalId != null) DeskButton(tr('goal_unlink'), small: true, onTap: () => s.returnToGoal(t)),
+          ]),
+          if (t.goalId != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(tr('goal_no_account_hint'), style: sans(context, size: 12, color: Ledger.mutedOf(context))),
+            ),
+        ],
         const SizedBox(height: 14),
         ListenableBuilder(
           listenable: _note,
