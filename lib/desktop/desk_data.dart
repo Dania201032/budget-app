@@ -129,7 +129,8 @@ class DeskData {
   static Future<DeskData> load(AppState s, DeskProfile p) async {
     final now = DateTime.now();
     final months = [for (var i = 12; i >= 0; i--) DateTime(now.year, now.month - i)];
-    final txns = await s.repo.txnsBetween(months.first, DateTime(now.year, now.month + 1));
+    // Shared budget with own limits: the budget chosen (Common / Mine / All), as on the phone.
+    final txns = (await s.repo.txnsBetween(months.first, DateTime(now.year, now.month + 1))).where(s.inBudgetScope).toList();
     final foreign = {for (final t in txns) t.currency}..remove(s.baseCurrency);
     if (foreign.isNotEmpty) {
       try {

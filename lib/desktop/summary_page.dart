@@ -9,7 +9,7 @@ import '../domain/periods.dart';
 import '../domain/runway.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
-import '../ui/home_screen.dart' show editBudgetDialog;
+import '../ui/home_screen.dart' show BudgetScopeBar, editBudgetDialog;
 import '../ui/ledger.dart';
 import '../ui/motion.dart';
 import '../ui/txn_editor.dart';
@@ -34,6 +34,9 @@ class SummaryPage extends StatelessWidget {
         DeskButton(tr('d_operation'), primary: true, icon: Icons.add, shortcut: 'N', onTap: () => openTxnEditor(context)),
       ],
       children: [
+        // Shared budget with own limits: whose budget the page shows.
+        if (s.householdOn && s.household!.personalLimits)
+          const Align(alignment: Alignment.centerLeft, child: SizedBox(width: 460, child: BudgetScopeBar())),
         if (m != null) _Kpis(m: m),
         SplitRow([
           (2, 560, _CumulativePanel(m: m)),

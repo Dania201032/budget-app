@@ -9,9 +9,11 @@ import '../ui/lock_screen.dart' show appLock;
 import '../state/app_state.dart';
 import '../ui/data_screens.dart' show BackupScreen, SheetImportScreen;
 import '../ui/home_screen.dart' show chooseDailyLimitMode;
+import '../ui/household_screen.dart' show HouseholdScreen;
 import '../ui/ledger.dart';
 import '../ui/lock_screen.dart' show LockSettingsScreen;
 import '../ui/settings_screen.dart' show CategoriesScreen, RatesScreen, accountDialog, chooseLanguage, pickCurrency;
+import '../ui/statement_import_screen.dart';
 import '../ui/sync_screen.dart';
 import '../ui/widgets.dart' show askAmount;
 import 'documents_page.dart' show documentsDir, openPath;
@@ -128,7 +130,14 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
       ]),
       section('accounts', tr('d_accounts'), [
         for (final a in s.accounts)
-          row('${s.accountName(a)} · ${a.currency}', s.balances[a.id] == null ? tr('d_no_balance') : formatMoney(s.balances[a.id]!, a.currency),
+          row(
+              [
+                '${s.accountName(a)} · ${a.currency}',
+                // Shared budget: whose it is.
+                if (s.householdOn) a.owner == null ? tr('hh_common') : (s.personOf(a.owner)?.name ?? ''),
+                if (s.householdOn && a.hidden) tr('hh_hidden_mark'),
+              ].where((x) => x.isNotEmpty).join(' · '),
+              s.balances[a.id] == null ? tr('d_no_balance') : formatMoney(s.balances[a.id]!, a.currency),
               Wrap(spacing: 6, children: [
                 DeskButton(tr('d_set_balance'), small: true, onTap: () async {
                   final v = await askAmount(context, title: s.accountName(a), suffix: a.currency);
@@ -227,6 +236,12 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
             ]),
           ),
         ),
+        row(
+          tr('hh_title'),
+          s.householdOn ? s.people.map((p) => p.name).join(', ') : tr('hh_tile_sub'),
+          DeskButton(tr('d_open'), onTap: () => _push(const HouseholdScreen())),
+        ),
+        row(tr('stmt_title'), tr('stmt_tile_sub'), DeskButton(tr('d_open'), onTap: () => _push(const StatementImportScreen()))),
         row(tr('import_excel'), tr('import_excel_sub'), DeskButton(tr('d_open'), onTap: () => _push(const SheetImportScreen()))),
         row(tr('d_backups'), tr('d_backups_sub'), DeskButton(tr('d_open'), onTap: () => _push(const BackupScreen()))),
       ]),

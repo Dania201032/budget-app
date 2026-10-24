@@ -112,6 +112,12 @@ void main() {
           desk.go(page);
           await settle(tester);
           expect(tester.takeException(), isNull, reason: 'page $page');
+          // Statement import and the shared budget are reachable on the computer too.
+          if (page == DeskPages.operations) expect(find.text(tr('stmt_title')), findsWidgets);
+          if (page == DeskPages.settings) {
+            expect(find.text(tr('hh_title'), skipOffstage: false), findsWidgets);
+            expect(find.text(tr('stmt_title'), skipOffstage: false), findsWidgets);
+          }
           // Scroll to the end: lazily built parts get laid out too.
           await tester.drag(find.byType(ListView).first, const Offset(0, -6000));
           await settle(tester);

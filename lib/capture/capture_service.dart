@@ -75,6 +75,10 @@ const alipayCategoryMap = <String, String>{
   'Top-ups': 'subscriptions', '充值缴费': 'subscriptions',
   'Life': 'other', '生活服务': 'other',
   'Transfers': 'transfers_out', '转账红包': 'transfers_out',
+  // Seen in Alipay's exported statements (交易明细).
+  'Travel': 'fun', '酒店旅游': 'fun', '运动户外': 'fun', '爱车养车': 'transport',
+  '商业服务': 'other', '其他': 'other', '收入': 'other', '公益捐赠': 'other', '保险': 'other',
+  '母婴亲子': 'shopping', '宠物': 'shopping', '美容美发': 'health',
 };
 
 /// Built-in category key for an Alipay category, adjusted to the direction.

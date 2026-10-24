@@ -11,7 +11,9 @@ import '../state/app_state.dart';
 import '../ui/data_screens.dart' show SheetImportScreen;
 import '../ui/ledger.dart';
 import '../ui/split_sheet.dart';
+import '../ui/statement_import_screen.dart';
 import '../ui/txn_editor.dart';
+import '../ui/widgets.dart' show PersonBadge;
 import 'kit.dart';
 import 'shell.dart';
 
@@ -66,7 +68,7 @@ class _OperationsPageState extends State<OperationsPage> {
 
   Future<void> _load(AppState s, Object key) async {
     _loadedFor = key;
-    final list = view == 'review' ? s.reviewQueue : await s.repo.txnsBetween(period.start, period.end);
+    final list = view == 'review' ? s.reviewQueue : (await s.repo.txnsBetween(period.start, period.end)).where(s.inBudgetScope).toList();
     if (!mounted || _loadedFor != key) return;
     setState(() => txns = list);
   }
@@ -145,6 +147,8 @@ class _OperationsPageState extends State<OperationsPage> {
                     dayFilter = null;
                   }), icon: const Icon(Icons.chevron_right)),
             ]),
+          DeskButton(tr('stmt_title'), icon: Icons.upload_file_outlined,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatementImportScreen()))),
           DeskButton(tr('d_import'), icon: Icons.upload_outlined,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SheetImportScreen()))),
           DeskButton(tr('d_export_excel'), onTap: () => desk.go(DeskPages.excel)),
@@ -582,7 +586,17 @@ class _Table extends StatelessWidget {
           1
         ),
         (Text(DateFormat.Hm().format(t.time), style: mono(size: 12.5, color: Ledger.mutedOf(context))), 2),
-        (textCell(context, t.merchant ?? '—', sub: t.note), 7),
+        (
+          // Shared budget: who recorded it, when it wasn't me.
+          s.householdOn && t.author != null && t.author != s.me && s.personOf(t.author) != null
+              ? Row(children: [
+                  PersonBadge(s.personOf(t.author)!, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(child: textCell(context, t.merchant ?? '—', sub: t.note)),
+                ])
+              : textCell(context, t.merchant ?? '—', sub: t.note),
+          7
+        ),
         (
           Align(
             alignment: Alignment.centerLeft,

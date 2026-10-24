@@ -1,7 +1,7 @@
 name: budget_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.13.0+2047
+version: 0.13.1+2048
 
 environment:
   sdk: ^3.13.5

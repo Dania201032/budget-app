@@ -75,6 +75,9 @@ class AppState extends ChangeNotifier {
   /// A person's own limit in base currency (shared budget with personal limits).
   int personalBudget(String uid) => _personalBudgets[uid] ?? 0;
 
+  /// Whether [t] counts in the budget the screens show (always, unless people have own limits).
+  bool inBudgetScope(Txn t) => !_scoped || _inScope(t);
+
   bool _inScope(Txn t) {
     final owner = t.accountId == null ? null : accountById[t.accountId]?.owner;
     return budgetScope == BudgetScope.common ? owner == null : owner == me;
