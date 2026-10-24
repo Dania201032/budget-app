@@ -19,7 +19,7 @@ Future<String?> pickCountry(BuildContext context, {Set<String> exclude = const {
       builder: (c) {
         var q = '';
         return StatefulBuilder(builder: (c, set) {
-          final list = countryInfos
+          final list = appCountries
               .where((x) => !exclude.contains(x.code))
               .where((x) => q.isEmpty || countryName(x.code).toLowerCase().contains(q.toLowerCase()) || x.code.toLowerCase() == q.toLowerCase())
               .toList();
@@ -132,7 +132,7 @@ class _FirstRunPageState extends State<FirstRunPage> {
     final s = context.watch<AppState>();
     final info = countryByCode[home]!;
     final muted = Ledger.mutedOf(context);
-    final options = countryInfos
+    final options = appCountries
         .where((c) => !picked.any((p) => p.code == c.code))
         .where((c) => q.isEmpty || countryName(c.code).toLowerCase().contains(q.toLowerCase()))
         .toList();
@@ -177,13 +177,6 @@ class _FirstRunPageState extends State<FirstRunPage> {
               ),
             ]),
             Wrap(spacing: 10, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              DropdownButton<String>(
-                value: currentLanguage,
-                items: [for (final l in supportedLanguages) DropdownMenuItem(value: l, child: Text(languageNames[l]!))],
-                onChanged: (v) {
-                  if (v != null) s.setLanguage(v);
-                },
-              ),
               DeskButton(tr('d_have_phone'), onTap: () async {
                 final joined = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const SyncScreen(closeWhenJoined: true)));
                 if (joined == true) await _finish();
@@ -193,6 +186,34 @@ class _FirstRunPageState extends State<FirstRunPage> {
         ),
         Expanded(
           child: ListView(padding: const EdgeInsets.fromLTRB(32, 24, 32, 48), children: [
+            // First of all, before any text the person may not read: the language, named in itself.
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Ledger.shadeOf(context), borderRadius: BorderRadius.circular(10)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Icon(Icons.language, size: 20, color: Ledger.accentOf(context)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Language · Язык · 语言 · Тіл · Sprache · Taal',
+                        style: sans(context, size: 14, weight: FontWeight.w600)),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final l in supportedLanguages)
+                    ChoiceChip(
+                      label: Text(languageNames[l]!, style: sans(context, size: 14, weight: FontWeight.w500, color: l == currentLanguage ? Ledger.paper : null)),
+                      selected: l == currentLanguage,
+                      selectedColor: Ledger.emerald,
+                      showCheckmark: false,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      onSelected: (_) => s.setLanguage(l),
+                    ),
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 20),
             SplitRow([
               (
                 3,

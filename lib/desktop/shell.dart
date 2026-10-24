@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
 import '../data/models.dart';
@@ -362,18 +363,7 @@ class _Sidebar extends StatelessWidget {
         const SizedBox(height: 18),
         Divider(color: Ledger.ruleOf(context), height: 1),
         const SizedBox(height: 10),
-        Row(children: [
-          Icon(Icons.smartphone, size: 16, color: Ledger.accentOf(context)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              s.sync.enabled
-                  ? (s.sync.lastSync == null ? tr('d_sync_on') : tr('d_sync_ago', [_ago(s.sync.lastSync!)]))
-                  : tr('d_sync_off'),
-              style: sans(context, size: 12.5, color: muted),
-            ),
-          ),
-        ]),
+        SyncStatus(onTap: () => d.go(DeskPages.settings)),
         const SizedBox(height: 6),
         _NavItem(
           label: tr('settings'),
@@ -396,11 +386,100 @@ class _Sidebar extends StatelessWidget {
   ];
 }
 
-String _ago(DateTime t) {
-  final m = DateTime.now().difference(t).inMinutes;
+/// "just now", "12 min ago", "today at 09:12", "yesterday at 18:40", "12 Oct, 18:40".
+String whenText(DateTime t) {
+  final now = DateTime.now();
+  final m = now.difference(t).inMinutes;
   if (m < 1) return tr('d_just_now');
   if (m < 60) return tr('d_min_ago', [m]);
-  return tr('d_hours_ago', [m ~/ 60]);
+  final hm = DateFormat.Hm(intlLocale).format(t);
+  final day = DateTime(t.year, t.month, t.day), today = DateTime(now.year, now.month, now.day);
+  if (day == today) return tr('d_today_at', [hm]);
+  if (day == today.subtract(const Duration(days: 1))) return tr('d_yesterday_at', [hm]);
+  return '${(t.year == now.year ? DateFormat.MMMd(intlLocale) : DateFormat.yMMMd(intlLocale)).format(t)}, $hm';
+}
+
+/// Phone sync in the sidebar: when data really went back and forth (not when the folder was last
+/// looked at), when the phone last left its changes, and errors. Refreshes itself as time passes.
+class SyncStatus extends StatefulWidget {
+  final VoidCallback? onTap;
+  const SyncStatus({super.key, this.onTap});
+  @override
+  State<SyncStatus> createState() => _SyncStatusState();
+}
+
+class _SyncStatusState extends State<SyncStatus> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.read<AppState>().sync;
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) {
+        final muted = Ledger.mutedOf(context);
+        final String line;
+        String? second;
+        var warn = false;
+        if (!sync.enabled) {
+          line = tr('d_sync_off');
+        } else if (sync.busy) {
+          line = tr('d_syncing');
+        } else if (sync.lastError != null) {
+          line = tr('d_sync_failed');
+          warn = true;
+        } else {
+          line = sync.lastSync == null ? tr('d_sync_never') : tr('d_sync_ago', [whenText(sync.lastSync!)]);
+        }
+        if (sync.enabled && sync.otherDeviceSeen != null) second = tr('d_phone_seen', [whenText(sync.otherDeviceSeen!)]);
+        final details = [
+          if (sync.lastSync != null) tr('d_sync_ago', [whenText(sync.lastSync!)]),
+          if (sync.otherDeviceSeen != null) tr('d_phone_seen', [whenText(sync.otherDeviceSeen!)]),
+          if (sync.lastCheck != null) tr('d_sync_checked', [whenText(sync.lastCheck!)]),
+          if (sync.lastError != null) sync.lastError!,
+        ].join('\n');
+        return Tooltip(
+          message: details,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: sync.busy
+                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.6, color: Ledger.accentOf(context)))
+                      : Icon(warn ? Icons.sync_problem : Icons.smartphone, size: 16, color: warn ? warnOf(context) : Ledger.accentOf(context)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(line, style: sans(context, size: 12.5, color: warn ? warnOf(context) : muted)),
+                    if (second != null) Text(second, style: sans(context, size: 11.5, color: muted)),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _NavItem extends StatelessWidget {

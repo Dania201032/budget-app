@@ -53,7 +53,7 @@ class _TaxesPageState extends State<TaxesPage> {
           Panel(
             title: tr('d_calculator'),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(tr('d_calc_no_rules', [taxRules.keys.map(countryName).join(', ')]), style: sans(context, size: 13, color: Ledger.mutedOf(context), height: 1.45)),
+              Text(tr('d_calc_no_rules', [taxRules.keys.where((k) => appCountries.any((c) => c.code == k)).map(countryName).join(', ')]), style: sans(context, size: 13, color: Ledger.mutedOf(context), height: 1.45)),
               const SizedBox(height: 10),
               DeskButton(tr('d_open_settings'), onTap: () => desk.go(DeskPages.settings)),
             ]),

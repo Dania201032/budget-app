@@ -133,9 +133,16 @@ void main() {
     await tester.pumpWidget(app(state, const FirstRunPage()));
     await settle(tester);
     expect(tester.takeException(), isNull);
+    // Only the phone's countries are offered.
+    expect(find.text(tr('d_c_US')), findsNothing);
     await tester.tap(find.text(tr('d_c_DE')).first);
     await settle(tester);
     expect(find.textContaining('EUR'), findsWidgets);
+    // The language comes first and switches the whole page.
+    await tester.tap(find.text('English'));
+    await settle(tester);
+    expect(currentLanguage, 'en');
+    expect(find.text(tr('d_welcome')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../data/repository.dart';
+import '../ui/onboarding.dart' as phone show countries;
 
 /// What the computer version keeps besides the shared data: the user's countries, investments,
 /// category plans, forecast scenarios, hint rules and tax inputs. Stored as JSON settings, so they
@@ -74,6 +75,10 @@ const countryInfos = <CountryInfo>[
 ];
 
 final countryByCode = {for (final c in countryInfos) c.code: c};
+
+/// Countries a person can choose: the same list the phone offers at the first start
+/// (lib/ui/onboarding.dart), so the two never disagree.
+List<CountryInfo> get appCountries => [for (final code in phone.countries) ?countryByCode[code]];
 
 /// The user's countries: where they live ('home') and where incomes come from ('income').
 class MyCountry {

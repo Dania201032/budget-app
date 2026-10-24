@@ -210,10 +210,23 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
                   })),
       ], lead: tr('d_hints_lead'), accent: true),
       section('sync', tr('d_sync'), [
-        row(s.sync.enabled ? tr('d_sync_on') : tr('d_sync_off'), s.sync.folderLabel, Wrap(spacing: 6, children: [
-          DeskButton(tr('d_open'), onTap: () => _push(const SyncScreen())),
-          if (s.sync.enabled) DeskButton(tr('d_sync_now'), primary: true, onTap: s.syncNow),
-        ])),
+        ListenableBuilder(
+          listenable: s.sync,
+          builder: (context, _) => row(
+            s.sync.enabled ? tr('d_sync_on') : tr('d_sync_off'),
+            [
+              ?s.sync.folderLabel,
+              if (s.sync.enabled) s.sync.lastSync == null ? tr('d_sync_never') : tr('d_sync_ago', [whenText(s.sync.lastSync!)]),
+              if (s.sync.otherDeviceSeen != null) tr('d_phone_seen', [whenText(s.sync.otherDeviceSeen!)]),
+              if (s.sync.lastCheck != null) tr('d_sync_checked', [whenText(s.sync.lastCheck!)]),
+              if (s.sync.lastError != null) '${tr('d_sync_failed')}: ${s.sync.lastError}',
+            ].join('\n'),
+            Wrap(spacing: 6, children: [
+              DeskButton(tr('d_open'), onTap: () => _push(const SyncScreen())),
+              if (s.sync.enabled) DeskButton(s.sync.busy ? tr('d_syncing') : tr('d_sync_now'), primary: true, onTap: s.sync.busy ? null : s.syncNow),
+            ]),
+          ),
+        ),
         row(tr('import_excel'), tr('import_excel_sub'), DeskButton(tr('d_open'), onTap: () => _push(const SheetImportScreen()))),
         row(tr('d_backups'), tr('d_backups_sub'), DeskButton(tr('d_open'), onTap: () => _push(const BackupScreen()))),
       ]),

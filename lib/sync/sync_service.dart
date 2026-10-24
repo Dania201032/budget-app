@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
@@ -19,7 +21,15 @@ class SyncService extends ChangeNotifier {
 
   bool busy = false;
   String? lastError;
+
+  /// When changes last actually went to or came from another device — not just a look at the folder.
   DateTime? lastSync;
+
+  /// When the folder was last looked at (with or without changes).
+  DateTime? lastCheck;
+
+  /// When another device last left its changes in the folder (computer only: from the files' times).
+  DateTime? otherDeviceSeen;
 
   bool get enabled => _folder != null && _cipher != null && _device != null;
   String? get folderLabel => _folder?.label;
@@ -40,8 +50,31 @@ class SyncService extends ChangeNotifier {
       _folder = folderOf(kind, location, await repo.setting('sync_label') ?? location);
       _cipher = SyncCipher.fromKey(key);
     }
+    await _readTimes();
+  }
+
+  /// The engine writes `sync_last` only when files were sent or taken, so it is the real time.
+  Future<void> _readTimes() async {
     final last = int.tryParse(await repo.setting('sync_last') ?? '');
     lastSync = last == null ? null : DateTime.fromMillisecondsSinceEpoch(last);
+    otherDeviceSeen = _otherDeviceSeen();
+  }
+
+  DateTime? _otherDeviceSeen() {
+    final f = _folder;
+    if (f is! IoSyncFolder || _device == null || !f.dir.existsSync()) return null;
+    DateTime? latest;
+    try {
+      for (final e in f.dir.listSync()) {
+        final name = e.uri.pathSegments.last;
+        if (e is! File || !name.startsWith('bs-') || !name.endsWith('.bsync') || name.startsWith('bs-$_device-')) continue;
+        final t = e.lastModifiedSync();
+        if (latest == null || t.isAfter(latest)) latest = t;
+      }
+    } catch (_) {
+      // A cloud folder that is still downloading: no time this round.
+    }
+    return latest;
   }
 
   static SyncFolder folderOf(String kind, String location, String label) =>
@@ -66,7 +99,8 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
     try {
       final r = await SyncEngine(repo.db, folder, cipher, device).enable();
-      lastSync = DateTime.now();
+      lastCheck = DateTime.now();
+      await _readTimes();
       lastError = null;
       return r;
     } finally {
@@ -86,6 +120,8 @@ class SyncService extends ChangeNotifier {
     _cipher = null;
     _device = null;
     lastSync = null;
+    lastCheck = null;
+    otherDeviceSeen = null;
     lastError = null;
     notifyListeners();
   }
@@ -97,11 +133,13 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
     try {
       final r = await SyncEngine(repo.db, _folder!, _cipher!, _device!).run();
-      lastSync = DateTime.now();
+      lastCheck = DateTime.now();
+      await _readTimes();
       lastError = null;
       return r;
     } catch (e) {
       debugPrint('Sync failed: $e');
+      lastCheck = DateTime.now();
       lastError = '$e';
       return null;
     } finally {
