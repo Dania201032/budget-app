@@ -8,6 +8,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
 import '../ui/settings_screen.dart' show pickCurrency;
+import 'charts.dart';
 import 'kit.dart';
 import 'profile.dart';
 import 'shell.dart';
@@ -59,6 +60,7 @@ class _IncomePageState extends State<IncomePage> {
         ]),
         Panel(
           title: tr('d_income_by_month'),
+          subtitle: tr('d_chart_click_month'),
           trailing: Wrap(spacing: 4, children: [
             for (var i = 0; i < shownCats.length; i++)
               TextButton.icon(
@@ -70,7 +72,7 @@ class _IncomePageState extends State<IncomePage> {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 16, height: 2, color: warnColor),
+                Container(width: 12, height: 12, decoration: BoxDecoration(color: warnColor.withValues(alpha: .2), border: Border.all(color: warnColor, width: 1.5), borderRadius: BorderRadius.circular(2))),
                 const SizedBox(width: 6),
                 Text(tr('d_expenses'), style: sans(context, size: 12.5)),
               ]),
@@ -122,48 +124,31 @@ class _IncomeBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<AppState>();
-    var maxV = 1;
-    for (var i = 1; i < 13; i++) {
-      final total = series.fold<int>(0, (a, l) => a + (l?[i] ?? 0));
-      if (total > maxV) maxV = total;
-      if (spent[i] > maxV) maxV = spent[i];
-    }
-    const h = 200.0;
-    return SizedBox(
-      height: h + 64,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+    final desk = context.read<DeskController>();
+    String money(num v) => formatMoney((v * 100).round(), s.baseCurrency);
+    double income(int i) => series.fold<int>(0, (a, l) => a + (l?[i] ?? 0)) / 100;
+    return DeskBarChart(
+      height: 260,
+      rodWidth: 13,
+      xLabels: [for (var i = 1; i < 13; i++) DateFormat.MMM(intlLocale).format(months[i])],
+      groups: [
         for (var i = 1; i < 13; i++)
-          Expanded(
-            child: Tooltip(
-              message: '${DateFormat.yMMM(intlLocale).format(months[i])}: +${formatMoney(series.fold<int>(0, (a, l) => a + (l?[i] ?? 0)), s.baseCurrency)} / −${formatMoney(spent[i], s.baseCurrency)}',
-              child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                SizedBox(
-                  height: h,
-                  child: Stack(alignment: Alignment.bottomCenter, children: [
-                    FractionallySizedBox(
-                      widthFactor: .46,
-                      child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                        for (var k = series.length - 1; k >= 0; k--)
-                          if ((series[k]?[i] ?? 0) > 0)
-                            Container(height: (series[k]![i] / maxV * h).clamp(2, h), color: _palette[k % _palette.length]),
-                      ]),
-                    ),
-                    Positioned(
-                      bottom: spent[i] / maxV * h,
-                      left: 6,
-                      right: 6,
-                      child: Container(height: 2, color: warnColor),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 6),
-                Text(DateFormat.MMM(intlLocale).format(months[i]), style: mono(size: 11, color: Ledger.mutedOf(context))),
-                Text(NumberFormat.compact(locale: intlLocale).format(series.fold<int>(0, (a, l) => a + (l?[i] ?? 0)) / 100),
-                    style: mono(size: 11)),
-              ]),
-            ),
-          ),
-      ]),
+          [
+            DRod([
+              for (var k = 0; k < series.length; k++)
+                if ((series[k]?[i] ?? 0) > 0) (series[k]![i] / 100, _palette[k % _palette.length]),
+            ]),
+            DRod([(spent[i] / 100, warnColor)], outline: warnColor),
+          ],
+      ],
+      tooltip: (g) {
+        final i = g + 1;
+        final inc = income(i), out = spent[i] / 100;
+        return '${DateFormat.yMMMM(intlLocale).format(months[i])}\n'
+            '${tr('d_incomes')}: +${money(inc)}\n${tr('d_expenses')}: −${money(out)}\n'
+            '${tr('d_difference')}: ${inc >= out ? '+' : '−'}${money((inc - out).abs())}';
+      },
+      onTap: (g) => desk.go(DeskPages.operations, filter: 'month:${DateFormat('yyyy-MM').format(months[g + 1])}:income'),
     );
   }
 }

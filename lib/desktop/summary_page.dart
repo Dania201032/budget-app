@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
@@ -13,8 +11,10 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/home_screen.dart' show editBudgetDialog;
 import '../ui/ledger.dart';
+import '../ui/motion.dart';
 import '../ui/txn_editor.dart';
 import 'kit.dart';
+import 'charts.dart';
 import 'shell.dart';
 
 class SummaryPage extends StatelessWidget {
@@ -127,149 +127,42 @@ class _CumulativePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final d = context.watch<DeskController>().data;
+    final desk = context.watch<DeskController>();
+    final d = desk.data;
     final s = context.watch<AppState>();
-    final stats = m;
+    final now = DateTime.now();
+    final n = d.thisMonthDays.length;
+    final today = now.day.clamp(1, n);
+    final budget = (m?.budgetMinor ?? 0) / 100;
+    double c = 0;
+    final cum = <double?>[for (var i = 0; i < n; i++) i < today ? (c += d.thisMonthDays[i] / 100) : null];
+    final spent = cum[today - 1] ?? 0;
+    final avg = spent / today;
+    final forecast = <double?>[for (var i = 0; i < n; i++) i < today - 1 ? null : spent + avg * (i - today + 1)];
+    double p = 0;
+    final prev = <double?>[for (var i = 0; i < n; i++) i < d.prevMonthDays.length ? (p += d.prevMonthDays[i] / 100) : null];
+    String money(double v) => formatMoney((v * 100).round(), s.baseCurrency);
     return Panel(
       title: tr('d_cumulative'),
-      trailing: Wrap(spacing: 14, children: [
-        _legend(context, Ledger.inkOf(context), tr('d_this_month')),
-        _legend(context, Ledger.accentOf(context), tr('d_forecast'), dashed: true),
-        _legend(context, const Color(0xFFABA597), tr('d_last_month')),
-        if ((stats?.budgetMinor ?? 0) > 0) _legend(context, warnColor, tr('d_budget'), dashed: true),
-      ]),
-      child: AspectRatio(
-        aspectRatio: 2.9,
-        child: CustomPaint(
-          painter: _CumulativePainter(
-            days: d.thisMonthDays,
-            prev: d.prevMonthDays,
-            today: DateTime.now().day,
-            budget: stats?.budgetMinor ?? 0,
-            ink: Ledger.inkOf(context),
-            accent: Ledger.accentOf(context),
-            muted: Ledger.mutedOf(context),
-            rule: Ledger.trackOf(context),
-            base: s.baseCurrency,
-          ),
-        ),
+      subtitle: tr('d_chart_click_day'),
+      child: DeskLineChart(
+        height: 250,
+        lines: [
+          DLine(prev, const Color(0xFFABA597), tr('d_last_month'), width: 1.8),
+          DLine(forecast, Ledger.accentOf(context), tr('d_forecast'), dashed: true),
+          DLine(cum, Ledger.inkOf(context), tr('d_this_month'), width: 2.8, area: true),
+        ],
+        hLines: [if (budget > 0) (budget, warnColor, '${tr('d_budget')} ${money(budget)}')],
+        xLabels: [for (var i = 1; i <= n; i++) '$i'],
+        labelEvery: 5,
+        format: money,
+        xTitle: (i) => DateFormat.MMMMd(intlLocale).format(DateTime(now.year, now.month, i + 1)),
+        onTap: (i) {
+          if (i < today) desk.go(DeskPages.operations, filter: 'day:${DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month, i + 1))}');
+        },
       ),
     );
   }
-
-  Widget _legend(BuildContext c, Color color, String label, {bool dashed = false}) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 16, height: dashed ? 2 : 3, color: color),
-        const SizedBox(width: 6),
-        Text(label, style: sans(c, size: 12.5)),
-      ]);
-}
-
-class _CumulativePainter extends CustomPainter {
-  final List<int> days, prev;
-  final int today, budget;
-  final Color ink, accent, muted, rule;
-  final String base;
-  _CumulativePainter({
-    required this.days,
-    required this.prev,
-    required this.today,
-    required this.budget,
-    required this.ink,
-    required this.accent,
-    required this.muted,
-    required this.rule,
-    required this.base,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const left = 46.0, bottom = 22.0, top = 10.0, right = 8.0;
-    final w = size.width - left - right, h = size.height - top - bottom;
-    final n = days.length;
-    final cum = <int>[];
-    var c = 0;
-    for (var i = 0; i < math.min(today, n); i++) {
-      c += days[i];
-      cum.add(c);
-    }
-    final spent = cum.isEmpty ? 0 : cum.last;
-    final avg = today == 0 ? 0.0 : spent / today;
-    final forecast = spent + avg * (n - today);
-    final prevCum = <int>[];
-    var pc = 0;
-    for (final v in prev) {
-      pc += v;
-      prevCum.add(pc);
-    }
-    final maxV = [forecast * 1.15, budget * 1.1, (prevCum.isEmpty ? 0 : prevCum.last) * 1.05, 100.0].reduce(math.max);
-    double x(int day) => left + (day - 1) / math.max(1, n - 1) * w;
-    double y(num v) => top + h * (1 - v / maxV);
-    final grid = Paint()..color = rule;
-    final label = TextStyle(fontFamily: Ledger.monoFamily, fontSize: 10.5, color: muted);
-    for (var i = 0; i <= 4; i++) {
-      final v = maxV * i / 4;
-      canvas.drawLine(Offset(left, y(v)), Offset(left + w, y(v)), grid);
-      _text(canvas, NumberFormat.compact(locale: intlLocale).format(v / 100), Offset(left - 6, y(v) - 7), label, alignRight: true);
-    }
-    for (final dday in [1, 10, 20, n]) {
-      _text(canvas, '$dday', Offset(x(dday) - 6, top + h + 6), label);
-    }
-    Path line(List<int> values) {
-      final p = Path();
-      for (var i = 0; i < values.length; i++) {
-        final pt = Offset(x(i + 1), y(values[i]));
-        i == 0 ? p.moveTo(pt.dx, pt.dy) : p.lineTo(pt.dx, pt.dy);
-      }
-      return p;
-    }
-
-    canvas.drawPath(line(prevCum), Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
-      ..color = const Color(0xFFABA597));
-    if (budget > 0) {
-      _dashed(canvas, Offset(left, y(budget)), Offset(left + w, y(budget)), Paint()
-      ..strokeWidth = 1.4
-      ..color = warnColor);
-    }
-    if (cum.isNotEmpty) {
-      final band = Path()
-        ..moveTo(x(today), y(spent))
-        ..lineTo(x(n), y(spent + avg * 1.2 * (n - today)))
-        ..lineTo(x(n), y(spent + avg * .8 * (n - today)))
-        ..close();
-      canvas.drawPath(band, Paint()..color = Ledger.mint.withValues(alpha: .3));
-      _dashed(canvas, Offset(x(today), y(spent)), Offset(x(n), y(forecast)), Paint()
-        ..strokeWidth = 2
-        ..color = accent);
-      canvas.drawPath(line(cum), Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.6
-        ..strokeJoin = StrokeJoin.round
-        ..color = ink);
-      canvas.drawCircle(Offset(x(today), y(spent)), 4.5, Paint()..color = ink);
-      _text(canvas, formatMoney(forecast.round(), base), Offset(left + w - 4, y(forecast) + 6),
-          TextStyle(fontFamily: Ledger.monoFamily, fontSize: 12, fontWeight: FontWeight.w600, color: accent),
-          alignRight: true);
-    }
-  }
-
-  void _dashed(Canvas canvas, Offset a, Offset b, Paint p) {
-    final len = (b - a).distance;
-    if (len == 0) return;
-    final dir = (b - a) / len;
-    for (double t = 0; t < len; t += 11) {
-      canvas.drawLine(a + dir * t, a + dir * math.min(t + 6, len), p);
-    }
-  }
-
-  void _text(Canvas canvas, String s, Offset at, TextStyle style, {bool alignRight = false}) {
-    final tp = TextPainter(text: TextSpan(text: s, style: style), textDirection: TextDirection.ltr)..layout();
-    tp.paint(canvas, alignRight ? at - Offset(tp.width, 0) : at);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CumulativePainter old) => true;
 }
 
 class _CalendarPanel extends StatelessWidget {
@@ -328,9 +221,20 @@ class _CalendarPanel extends StatelessWidget {
   Widget _dayCell(BuildContext context, int day, int today, int spent, double limit, List<String>? due) {
     final past = day <= today;
     final over = limit > 0 && spent > limit;
+    final now = DateTime.now();
+    final date = DateTime(now.year, now.month, day);
     return Tooltip(
-      message: past ? formatAmount(spent) : (due?.join(', ') ?? ''),
-      child: Container(
+      message: past
+          ? '${DateFormat.MMMMd(intlLocale).format(date)}: ${formatAmount(spent)} · ${tr('d_click_to_open')}'
+          : (due?.join(', ') ?? ''),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(5),
+        onTap: past
+            ? () => context.read<DeskController>().go(DeskPages.operations, filter: 'day:${DateFormat('yyyy-MM-dd').format(date)}')
+            : null,
+        child: AnimatedContainer(
+        duration: motion(context, motionMedium),
+        curve: motionCurve,
         padding: const EdgeInsets.fromLTRB(5, 3, 5, 3),
         decoration: BoxDecoration(
           color: past ? (over ? Ledger.overOf(context) : Ledger.withinOf(context)) : null,
@@ -350,6 +254,7 @@ class _CalendarPanel extends StatelessWidget {
             ),
           ),
         ]),
+      ),
       ),
     );
   }

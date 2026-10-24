@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,8 @@ import '../domain/money.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
-import 'documents_page.dart' show documentsDir, openPath;
+import 'documents_page.dart' show saveWithDialog;
+import 'charts.dart';
 import 'kit.dart';
 import 'profile.dart';
 import 'shell.dart';
@@ -45,9 +46,10 @@ class _TaxesPageState extends State<TaxesPage> {
     final desk = context.watch<DeskController>();
     final p = desk.profile;
     final mine = [for (final c in p.countries) c.code];
-    final withRules = [...mine.where(taxRules.containsKey), ...taxRules.keys.where((k) => !mine.contains(k))];
+    // Only the countries chosen in Settings: the others are noise for this person.
+    final withRules = [...mine.where(taxRules.containsKey)];
     final sal = _Salary.compute(s, desk.data, salaryCountry, mine);
-    final calc = calcCountry ?? mine.firstWhere(taxRules.containsKey, orElse: () => 'RU');
+    final calc = withRules.contains(calcCountry) ? calcCountry : withRules.firstOrNull;
 
     return DeskPage(
       title: tr('d_taxes_title', [DateTime.now().year]),
@@ -73,6 +75,16 @@ class _TaxesPageState extends State<TaxesPage> {
         _VatPanel(mine: mine),
         _OtherTaxes(mine: mine),
         _Payments(mine: mine, sal: sal, nonResident: nonResident),
+        if (calc == null)
+          Panel(
+            title: tr('d_calculator'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(tr('d_calc_no_rules', [taxRules.keys.map(countryName).join(', ')]), style: sans(context, size: 13, color: Ledger.mutedOf(context), height: 1.45)),
+              const SizedBox(height: 10),
+              DeskButton(tr('d_open_settings'), onTap: () => desk.go(DeskPages.settings)),
+            ]),
+          )
+        else
         _Calculator(
           country: calc,
           countries: withRules,
@@ -107,10 +119,7 @@ class _TaxesPageState extends State<TaxesPage> {
           'BEGIN:VALARM\r\nTRIGGER:-P14D\r\nACTION:DISPLAY\r\nDESCRIPTION:${i.what.replaceAll(',', '\\,')}\r\nEND:VALARM\r\nEND:VEVENT\r\n');
     }
     sb.write('END:VCALENDAR\r\n');
-    final dir = await documentsDir(desk);
-    final f = File('${dir.path}${Platform.pathSeparator}taxes-${DateTime.now().year}.ics');
-    await f.writeAsString(sb.toString());
-    await openPath(f.path);
+    await saveWithDialog(context, desk, 'taxes-${DateTime.now().year}.ics', utf8.encode(sb.toString()));
   }
 }
 
@@ -146,7 +155,7 @@ class _Salary {
     }
     final options = [
       for (final r in taxRules.values)
-        if (byCurrency.containsKey(r.currency) && (mine.contains(r.country) || byCurrency.length == 1 || r.currency != 'EUR')) r.country,
+        if (byCurrency.containsKey(r.currency) && mine.contains(r.country)) r.country,
     ];
     if (options.isEmpty) return null;
     final country = preferred != null && options.contains(preferred)
@@ -253,8 +262,8 @@ class _SalaryPanel extends StatelessWidget {
     final extra = nonResident && hasNr ? sal.grossYear * r.nonResidentRate! - sal.taxYear : 0.0;
     final base = r.taxableBase(sal.grossYear);
     final nextBound = r.brackets.map((b) => b.upTo).where((u) => u > base && u.isFinite).firstOrNull;
-    final maxGross = sal.net.whereType<double>().fold(1.0, (a, b) => math.max(a, b * sal.ratio));
     final months = [for (var i = 0; i < 12; i++) DateFormat.MMM(intlLocale).format(DateTime(2024, i + 1))];
+    final now = DateTime.now();
     return Panel(
       title: tr('d_salary_tax_in', [countryName(sal.country)]),
       trailing: Wrap(spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -272,41 +281,33 @@ class _SalaryPanel extends StatelessWidget {
           2,
           520,
           Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(
-              height: 190,
-              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            DeskBarChart(
+              height: 220,
+              rodWidth: 18,
+              groups: [
                 for (var m = 0; m < 12; m++)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Tooltip(
-                        message: sal.net[m] == null ? '' : '${tr('d_net')} ${sal.money(sal.net[m]!)} · ${tr('d_tax')} ${sal.money(sal.net[m]! * (sal.ratio - 1))}',
-                        child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                          if (sal.net[m] != null) ...[
-                            Text(NumberFormat.compact(locale: intlLocale).format(sal.net[m]! * (sal.ratio - 1) + (nonResident && m == 11 ? extra : 0)),
-                                style: mono(size: 10.5, color: Ledger.mutedOf(context))),
-                            if (nonResident && m == 11 && extra > 0) Container(height: math.min(120, extra / maxGross * 150), color: warnColor),
-                            Container(
-                              height: math.max(3, sal.net[m]! * (sal.ratio - 1) / maxGross * 150),
-                              color: sal.forecast[m] ? Ledger.inkOf(context).withValues(alpha: .35) : Ledger.inkOf(context),
-                            ),
-                            Container(
-                              height: sal.net[m]! / maxGross * 150,
-                              color: sal.forecast[m] ? const Color(0xFF4F9E86).withValues(alpha: .4) : const Color(0xFF4F9E86),
-                            ),
-                          ],
-                        ]),
-                      ),
-                    ),
-                  ),
-              ]),
+                  [
+                    DRod([
+                      if (sal.net[m] != null) ...[
+                        (sal.net[m]!, sal.forecast[m] ? const Color(0xFF4F9E86).withValues(alpha: .4) : const Color(0xFF4F9E86)),
+                        (sal.net[m]! * (sal.ratio - 1), sal.forecast[m] ? Ledger.inkOf(context).withValues(alpha: .35) : Ledger.inkOf(context)),
+                        if (nonResident && m == 11 && extra > 0) (extra, warnColor),
+                      ],
+                    ]),
+                  ],
+              ],
+              xLabels: months,
+              tooltip: (m) => sal.net[m] == null
+                  ? months[m]
+                  : '${DateFormat.yMMMM(intlLocale).format(DateTime(now.year, m + 1))}${sal.forecast[m] ? ' · ${tr('d_forecast')}' : ''}\n'
+                      '${tr('d_net')}: ${sal.money(sal.net[m]!)}\n'
+                      '${tr('d_tax')}: ${sal.money(sal.net[m]! * (sal.ratio - 1))}\n'
+                      '${tr('d_gross_short')}: ${sal.money(sal.net[m]! * sal.ratio)}',
+              onTap: (m) {
+                if (sal.net[m] == null || sal.forecast[m]) return;
+                context.read<DeskController>().go(DeskPages.operations, filter: 'month:${DateFormat('yyyy-MM').format(DateTime(now.year, m + 1))}:income');
+              },
             ),
-            Container(height: 1, color: Ledger.inkOf(context)),
-            const SizedBox(height: 4),
-            Row(children: [
-              for (var m = 0; m < 12; m++)
-                Expanded(child: Text(months[m], textAlign: TextAlign.center, style: mono(size: 11, color: sal.forecast[m] ? Ledger.mutedOf(context) : null))),
-            ]),
             const SizedBox(height: 8),
             Wrap(spacing: 16, runSpacing: 4, children: [
               _key(context, const Color(0xFF4F9E86), tr('d_came_to_account')),
@@ -457,7 +458,7 @@ class _VatPanel extends StatelessWidget {
     final now = DateTime.now();
     final byCatCountry = <(int?, String), int>{};
     final countryOf = <String, String>{};
-    for (final c in [...desk.profile.countries.map((c) => countryByCode[c.code]).whereType<CountryInfo>(), ...countryInfos]) {
+    for (final c in desk.profile.countries.map((c) => countryByCode[c.code]).whereType<CountryInfo>()) {
       countryOf.putIfAbsent(c.currency, () => c.code);
     }
     for (final t in desk.data.txns) {
@@ -831,11 +832,7 @@ class _Calculator extends StatelessWidget {
             const SizedBox(height: 12),
             for (var i = 0; i < r.brackets.length; i++)
               LineItem(
-                i == 0
-                    ? '${tr('d_up_to')} ${NumberFormat.compact(locale: intlLocale).format(r.brackets[i].upTo + (r.linearZones ? 0 : r.allowance))}'
-                    : r.brackets[i].upTo.isInfinite
-                        ? '${tr('d_above')} ${NumberFormat.compact(locale: intlLocale).format(r.brackets[i - 1].upTo + (r.linearZones ? 0 : r.allowance))}'
-                        : '${NumberFormat.compact(locale: intlLocale).format(r.brackets[i - 1].upTo + (r.linearZones ? 0 : r.allowance))} — ${NumberFormat.compact(locale: intlLocale).format(r.brackets[i].upTo + (r.linearZones ? 0 : r.allowance))}',
+                _bracketLabel(r, i),
                 '${NumberFormat('0.##', intlLocale).format(r.brackets[i].rate * 100)}%',
               ),
             const SizedBox(height: 6),
@@ -865,5 +862,13 @@ class _Calculator extends StatelessWidget {
         ),
       ]),
     );
+  }
+
+  /// "up to X", "X — Y", "above X", or "any income" for a single flat bracket.
+  static String _bracketLabel(TaxRules r, int i) {
+    String bound(int k) => NumberFormat.compact(locale: intlLocale).format(r.brackets[k].upTo + (r.linearZones ? 0 : r.allowance));
+    final last = !r.brackets[i].upTo.isFinite;
+    if (i == 0) return last ? tr('d_any_income') : '${tr('d_up_to')} ${bound(0)}';
+    return last ? '${tr('d_above')} ${bound(i - 1)}' : '${bound(i - 1)} — ${bound(i)}';
   }
 }

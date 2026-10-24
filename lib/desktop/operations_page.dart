@@ -26,6 +26,10 @@ class _OperationsPageState extends State<OperationsPage> {
   String view = 'all';
   int? categoryFilter;
   int? accountFilter;
+  String? currencyFilter;
+
+  /// One day (opened from the calendar or a chart on the Summary).
+  DateTime? dayFilter;
   String query = '';
   int? selected;
   final checked = <int>{};
@@ -39,8 +43,18 @@ class _OperationsPageState extends State<OperationsPage> {
   void initState() {
     super.initState();
     final f = context.read<DeskController>().takeOpsFilter();
-    if (f == 'review') view = 'review';
+    if (f == 'review' || f == 'income' || f == 'expense') view = f!;
     if (f != null && f.startsWith('cat:')) categoryFilter = int.tryParse(f.substring(4));
+    if (f != null && f.startsWith('day:')) {
+      dayFilter = DateTime.tryParse(f.substring(4));
+      if (dayFilter != null) period = Period.containing(PeriodType.month, dayFilter!);
+    }
+    if (f != null && f.startsWith('month:')) {
+      final parts = f.substring(6).split(':');
+      final m = DateTime.tryParse('${parts.first}-01');
+      if (m != null) period = Period.containing(PeriodType.month, m);
+      if (parts.length > 1) view = parts[1];
+    }
   }
 
   @override
@@ -63,7 +77,12 @@ class _OperationsPageState extends State<OperationsPage> {
     return txns.where((t) {
       if (categoryFilter != null && t.categoryId != categoryFilter) return false;
       if (accountFilter != null && t.accountId != accountFilter) return false;
+      if (currencyFilter != null && t.currency != currencyFilter) return false;
+      final day = dayFilter;
+      if (day != null && (t.time.year != day.year || t.time.month != day.month || t.time.day != day.day)) return false;
       switch (view) {
+        case 'expense':
+          if (t.kind != TxnKind.expense) return false;
         case 'large':
           if ((s.toBase(t) ?? 0) < _largeThreshold(s)) return false;
         case 'split':
@@ -116,9 +135,15 @@ class _OperationsPageState extends State<OperationsPage> {
         actions: [
           if (view != 'review')
             Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(tooltip: tr('d_prev'), onPressed: () => setState(() => period = period.shift(-1)), icon: const Icon(Icons.chevron_left)),
+              IconButton(tooltip: tr('d_prev'), onPressed: () => setState(() {
+                    period = period.shift(-1);
+                    dayFilter = null;
+                  }), icon: const Icon(Icons.chevron_left)),
               Text(period.label(), style: sans(context, size: 14, weight: FontWeight.w500)),
-              IconButton(tooltip: tr('d_next'), onPressed: () => setState(() => period = period.shift(1)), icon: const Icon(Icons.chevron_right)),
+              IconButton(tooltip: tr('d_next'), onPressed: () => setState(() {
+                    period = period.shift(1);
+                    dayFilter = null;
+                  }), icon: const Icon(Icons.chevron_right)),
             ]),
           DeskButton(tr('d_import'), icon: Icons.upload_outlined,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SheetImportScreen()))),
@@ -139,6 +164,11 @@ class _OperationsPageState extends State<OperationsPage> {
             onCategory: (v) => setState(() => categoryFilter = v),
             account: accountFilter,
             onAccount: (v) => setState(() => accountFilter = v),
+            currency: currencyFilter,
+            currencies: {for (final t in txns) t.currency, for (final a in s.accounts) a.currency}.toList()..sort(),
+            onCurrency: (v) => setState(() => currencyFilter = v),
+            day: dayFilter,
+            onClearDay: () => setState(() => dayFilter = null),
           ),
           SplitRow([
             (5, 640, _Table(
@@ -344,6 +374,11 @@ class _Filters extends StatefulWidget {
   final ValueChanged<int?> onCategory;
   final int? account;
   final ValueChanged<int?> onAccount;
+  final String? currency;
+  final List<String> currencies;
+  final ValueChanged<String?> onCurrency;
+  final DateTime? day;
+  final VoidCallback onClearDay;
   const _Filters({
     required this.view,
     required this.reviewCount,
@@ -354,6 +389,11 @@ class _Filters extends StatefulWidget {
     required this.onCategory,
     required this.account,
     required this.onAccount,
+    required this.currency,
+    required this.currencies,
+    required this.onCurrency,
+    required this.day,
+    required this.onClearDay,
   });
   @override
   State<_Filters> createState() => _FiltersState();
@@ -373,6 +413,7 @@ class _FiltersState extends State<_Filters> {
     final tabs = [
       ('all', tr('d_all')),
       ('review', '${tr('d_review')}${widget.reviewCount > 0 ? ' · ${widget.reviewCount}' : ''}'),
+      ('expense', tr('d_expenses_tab')),
       ('income', tr('d_incomes')),
       ('large', tr('d_large')),
       ('split', tr('d_for_friends')),
@@ -406,13 +447,23 @@ class _FiltersState extends State<_Filters> {
           items: [(null, tr('d_all')), for (final a in s.accounts) (a.id, s.accountName(a))],
           onChanged: widget.onAccount,
         ),
-        if (widget.category != null || widget.account != null || widget.query.isNotEmpty)
+        _Drop<String?>(
+          label: tr('currency'),
+          value: widget.currency,
+          items: [(null, tr('d_all')), for (final c in widget.currencies) (c, c)],
+          onChanged: widget.onCurrency,
+        ),
+        if (widget.day != null)
+          Pill(DateFormat.yMMMMd(intlLocale).format(widget.day!), selected: true, onTap: widget.onClearDay,
+              trailing: const Icon(Icons.close, size: 14, color: Ledger.paper)),
+        if (widget.category != null || widget.account != null || widget.currency != null || widget.query.isNotEmpty)
           TextButton(
             onPressed: () {
               _q.clear();
               widget.onQuery('');
               widget.onCategory(null);
               widget.onAccount(null);
+              widget.onCurrency(null);
             },
             child: Text(tr('d_reset')),
           ),

@@ -9,6 +9,7 @@ part 'strings_desk_c.dart';
 part 'strings_desk_d.dart';
 part 'strings_desk_e.dart';
 part 'strings_desk_f.dart';
+part 'strings_desk_g.dart';
 part 'strings_eu.dart';
 
 const supportedLanguages = ['ru', 'en', 'zh', 'kk', 'de', 'nl'];

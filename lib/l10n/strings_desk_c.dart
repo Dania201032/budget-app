@@ -13,7 +13,7 @@ const _deskC = <String, List<String>>{
   'd_income_period': ['Доходы за период', 'Income in the period', '期间收入', 'Кезеңдегі кіріс', 'Einnahmen im Zeitraum', 'Inkomsten in de periode'],
   'd_median': ['медиана {0}', 'median {0}', '中位数 {0}', 'медиана {0}', 'Median {0}', 'mediaan {0}'],
   'd_record_day': ['Самый дорогой день', 'Most expensive day', '花费最多的一天', 'Ең қымбат күн', 'Teuerster Tag', 'Duurste dag'],
-  'd_main_account': ['Главный способ оплаты', 'Main way to pay', '主要支付方式', 'Негізгі төлем тәсілі', 'Hauptzahlungsmittel', 'Belangrijkste betaalmiddel'],
+  'd_main_account': ['Чаще всего платите с', 'You pay most often from', '最常用的付款账户', 'Жиі төлейтін шот', 'Am häufigsten bezahlt mit', 'Meestal betaald met'],
   'd_by_month': ['Расходы и доходы по месяцам', 'Spending and income by month', '按月支出与收入', 'Айлар бойынша шығыс пен кіріс', 'Ausgaben und Einnahmen pro Monat', 'Uitgaven en inkomsten per maand'],
   'd_other': ['Прочее', 'Other', '其他', 'Басқа', 'Sonstiges', 'Overig'],
   'd_changes': ['Что изменилось к прошлому месяцу', 'What changed since last month', '较上月的变化', 'Өткен аймен салыстырғанда не өзгерді', 'Was sich ggü. Vormonat änderte', 'Wat veranderde t.o.v. vorige maand'],

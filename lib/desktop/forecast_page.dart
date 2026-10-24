@@ -14,6 +14,7 @@ import '../ui/ledger.dart';
 import '../ui/money_screen.dart' show editGoal;
 import '../ui/recurring_screen.dart' show editRecurring;
 import '../ui/runway_settings_screen.dart';
+import 'charts.dart';
 import 'kit.dart';
 import 'profile.dart';
 import 'shell.dart';
@@ -109,23 +110,10 @@ class _ForecastPageState extends State<ForecastPage> {
                   if (reserve > 0) _legend(context, warnColor, tr('d_reserve'), dashed: true),
                 ]),
                 const SizedBox(height: 8),
-                AspectRatio(
-                  aspectRatio: 2.6,
-                  child: r == null
-                      ? const Center(child: CircularProgressIndicator())
-                      : CustomPaint(
-                          painter: _BalancePainter(
-                            main: r.projection,
-                            plan: without?.projection ?? const [],
-                            reserve: reserve,
-                            runsOut: r.runsOutOn,
-                            ink: Ledger.inkOf(context),
-                            muted: Ledger.mutedOf(context),
-                            rule: Ledger.trackOf(context),
-                            base: base,
-                          ),
-                        ),
-                ),
+                if (r == null || r.projection.isEmpty)
+                  const SizedBox(height: 280, child: Center(child: CircularProgressIndicator()))
+                else
+                  _balanceChart(context, r, without, reserve, money),
               ]),
             ),
           ),
@@ -137,6 +125,31 @@ class _ForecastPageState extends State<ForecastPage> {
         ]),
         AutoGrid(minWidth: 320, children: const [_Goals(), _Recurring(), _Method()]),
       ],
+    );
+  }
+
+  /// Weekly samples of both projections on one interactive line chart.
+  Widget _balanceChart(BuildContext context, RunwayResult r, RunwayResult? plan, int reserve, String Function(num) money) {
+    final start = r.projection.first.day, end = r.projection.last.day;
+    final days = <DateTime>[for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 7))) d];
+    double? at(List<RunwayPoint> pts, DateTime d) =>
+        ((pts.where((p) => !p.day.isBefore(d)).firstOrNull ?? (pts.isEmpty ? null : pts.last))?.balanceMinor ?? 0) / 100;
+    final runsOut = r.runsOutOn;
+    return DeskLineChart(
+      height: 280,
+      lines: [
+        if (plan != null) DLine([for (final d in days) at(plan.projection, d)], const Color(0xFFABA597), tr('d_as_planned'), dashed: true, width: 2),
+        DLine([for (final d in days) at(r.projection, d)], Ledger.inkOf(context), tr('d_with_scenarios'), area: true, width: 2.6),
+      ],
+      xLabels: [for (final d in days) DateFormat.MMM(intlLocale).format(d)],
+      labelEvery: math.max(1, days.length ~/ 6),
+      xTitle: (i) {
+        final d = days[i];
+        final note = runsOut != null && !d.isBefore(runsOut) ? '  · ${tr('d_reserve')} ↓' : '';
+        return '${DateFormat.yMMMd(intlLocale).format(d)}$note';
+      },
+      format: (v) => money(v * 100),
+      hLines: [if (reserve > 0) (reserve / 100, warnColor, tr('d_reserve'))],
     );
   }
 
@@ -159,103 +172,6 @@ class _ForecastPageState extends State<ForecastPage> {
         const SizedBox(width: 6),
         Text(label, style: sans(c, size: 12.5)),
       ]);
-}
-
-class _BalancePainter extends CustomPainter {
-  final List<RunwayPoint> main, plan;
-  final int reserve;
-  final DateTime? runsOut;
-  final Color ink, muted, rule;
-  final String base;
-  _BalancePainter({
-    required this.main,
-    required this.plan,
-    required this.reserve,
-    required this.runsOut,
-    required this.ink,
-    required this.muted,
-    required this.rule,
-    required this.base,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (main.isEmpty) return;
-    const left = 58.0, bottom = 22.0, top = 10.0, right = 8.0;
-    final w = size.width - left - right, h = size.height - top - bottom;
-    final all = [...main, ...plan].map((p) => p.balanceMinor);
-    final maxV = math.max(all.reduce(math.max), reserve).toDouble() * 1.08;
-    final minV = math.min(0, all.reduce(math.min)).toDouble() * 1.08;
-    final start = main.first.day, end = main.last.day;
-    final span = math.max(1, end.difference(start).inDays);
-    double x(DateTime d) => left + d.difference(start).inDays / span * w;
-    double y(num v) => top + h * (maxV - v) / (maxV - minV == 0 ? 1 : maxV - minV);
-    final label = TextStyle(fontFamily: Ledger.monoFamily, fontSize: 10.5, color: muted);
-    for (var i = 0; i <= 4; i++) {
-      final v = minV + (maxV - minV) * i / 4;
-      canvas.drawLine(Offset(left, y(v)), Offset(left + w, y(v)), Paint()..color = rule);
-      _t(canvas, NumberFormat.compact(locale: intlLocale).format(v / 100), Offset(left - 6, y(v) - 7), label, right: true);
-    }
-    canvas.drawLine(Offset(left, y(0)), Offset(left + w, y(0)), Paint()..color = ink.withValues(alpha: .6));
-    for (var m = 0;; m += 3) {
-      final d = DateTime(start.year, start.month + m);
-      if (d.isAfter(end)) break;
-      _t(canvas, DateFormat.yMMM(intlLocale).format(d), Offset(x(d) - 18, top + h + 6), label);
-    }
-    if (reserve > 0) {
-      _dash(canvas, Offset(left, y(reserve)), Offset(left + w, y(reserve)), Paint()
-      ..strokeWidth = 1.4
-      ..color = warnColor);
-    }
-    Path path(List<RunwayPoint> pts) {
-      final p = Path();
-      for (var i = 0; i < pts.length; i += math.max(1, pts.length ~/ 300)) {
-        final o = Offset(x(pts[i].day), y(pts[i].balanceMinor));
-        i == 0 ? p.moveTo(o.dx, o.dy) : p.lineTo(o.dx, o.dy);
-      }
-      return p;
-    }
-
-    if (plan.isNotEmpty) {
-      final p = path(plan);
-      for (final metric in p.computeMetrics()) {
-        for (double t = 0; t < metric.length; t += 11) {
-          canvas.drawPath(metric.extractPath(t, t + 6), Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
-            ..color = const Color(0xFFABA597));
-        }
-      }
-    }
-    canvas.drawPath(path(main), Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.6
-      ..color = ink);
-    if (runsOut != null && !runsOut!.isAfter(end)) {
-      final xo = x(runsOut!);
-      _dash(canvas, Offset(xo, top), Offset(xo, top + h), Paint()
-        ..strokeWidth = 1.2
-        ..color = warnColor);
-      canvas.drawCircle(Offset(xo, y(reserve)), 6, Paint()..color = warnColor);
-    }
-  }
-
-  void _dash(Canvas c, Offset a, Offset b, Paint p) {
-    final len = (b - a).distance;
-    if (len == 0) return;
-    final dir = (b - a) / len;
-    for (double t = 0; t < len; t += 11) {
-      c.drawLine(a + dir * t, a + dir * math.min(t + 6, len), p);
-    }
-  }
-
-  void _t(Canvas c, String s, Offset at, TextStyle st, {bool right = false}) {
-    final tp = TextPainter(text: TextSpan(text: s, style: st), textDirection: TextDirection.ltr)..layout();
-    tp.paint(c, right ? at - Offset(tp.width, 0) : at);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class _Scenarios extends StatelessWidget {
@@ -487,20 +403,49 @@ class _PlanState extends State<_Plan> {
     final plan = desk.profile.categoryPlan;
     final cats = s.categoriesOf(TxnKind.expense);
     String money(int v) => formatMoney(v, s.baseCurrency);
-    int suggested(int id) => ((d.median3(id) / 1000).round() * 1000);
     for (final c in cats) {
       ctrl.putIfAbsent(c.id, () => TextEditingController(text: plan[c.id] == null ? '' : formatAmount(plan[c.id]!, pattern: '0')));
     }
     final total = cats.fold<int>(0, (a, c) => a + (((parseNum(ctrl[c.id]!.text) ?? 0) * 100).round()));
     final now = DateTime.now();
     final next = DateTime(now.year, now.month + 1);
+    // Usual month per category: the average of the last three months that had spending in it,
+    // plus this month's pace once a third of it has passed.
+    final passed = now.day, daysIn = DateTime(now.year, now.month + 1, 0).day;
+    int typical(int id) {
+      final list = d.spentByCategory[id];
+      if (list == null) return 0;
+      final v = [list[9], list[10], list[11], if (passed >= 10) d.forecastOf(id, daysPassed: passed, daysInMonth: daysIn)].where((x) => x > 0).toList();
+      return v.isEmpty ? 0 : v.reduce((a, b) => a + b) ~/ v.length;
+    }
+
+    final usual = {for (final c in cats) c.id: typical(c.id)};
+    final usualTotal = usual.values.fold<int>(0, (a, b) => a + b);
+    final budget = s.monthBudget(next) > 0 ? s.monthBudget(next) : s.monthBudget(now);
+    int nice(num v) {
+      final step = v >= 1000000 ? 100000 : v >= 100000 ? 10000 : v >= 10000 ? 1000 : 100;
+      return (v / step).round() * step;
+    }
+
+    // Null = not enough history for this category: the user fills it in.
+    int? suggested(int id) {
+      final u = usual[id] ?? 0;
+      if (u == 0) return null;
+      return nice(budget > 0 ? u * budget / usualTotal : u);
+    }
+
+    final how = usualTotal == 0
+        ? tr('d_suggest_none')
+        : budget > 0
+            ? tr('d_suggest_budget', [money(budget), money(usualTotal)])
+            : tr('d_suggest_no_budget');
     return Panel(
       title: tr('d_plan_title', [monthTitle(next)]),
       trailing: Text(tr('d_plan_total', [money(total)]), style: mono(size: 13, weight: FontWeight.w600)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         TableHead([
           (tr('category'), 5, false),
-          (tr('d_median3'), 3, true),
+          (tr('d_typical_month'), 3, true),
           (tr('d_last_month'), 3, true),
           (tr('d_suggest'), 3, true),
           (tr('d_plan'), 3, true),
@@ -508,9 +453,9 @@ class _PlanState extends State<_Plan> {
         for (final c in cats)
           TableLine([
             (Row(children: [Swatch(Color(c.color)), const SizedBox(width: 8), Expanded(child: Text(s.categoryName(c), style: sans(context, size: 13.5)))]), 5),
-            (numCell(context, money(d.median3(c.id)), color: Ledger.mutedOf(context)), 3),
+            (numCell(context, usual[c.id] == 0 ? '—' : money(usual[c.id]!), color: Ledger.mutedOf(context)), 3),
             (numCell(context, money(d.spentByCategory[c.id]?[11] ?? 0), color: Ledger.mutedOf(context)), 3),
-            (numCell(context, money(suggested(c.id))), 3),
+            (numCell(context, suggested(c.id) == null ? '—' : money(suggested(c.id)!), color: suggested(c.id) == null ? Ledger.mutedOf(context) : null), 3),
             (
               Padding(
                 padding: const EdgeInsets.only(left: 12),
@@ -525,18 +470,28 @@ class _PlanState extends State<_Plan> {
               3
             ),
           ], padding: 4),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
+        Text(how, style: sans(context, size: 12.5, color: usualTotal == 0 ? warnOf(context) : Ledger.mutedOf(context))),
+        const SizedBox(height: 10),
         Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
           DeskButton(tr('d_like_last'), onTap: () => setState(() {
                 for (final c in cats) {
                   ctrl[c.id]!.text = formatAmount(d.spentByCategory[c.id]?[11] ?? 0, pattern: '0');
                 }
               })),
-          DeskButton(tr('d_take_suggested'), onTap: () => setState(() {
-                for (final c in cats) {
-                  ctrl[c.id]!.text = formatAmount(suggested(c.id), pattern: '0');
-                }
-              })),
+          DeskButton(tr('d_take_suggested'), onTap: () {
+            if (usualTotal == 0) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('d_suggest_none'))));
+              return;
+            }
+            setState(() {
+              for (final c in cats) {
+                final v = suggested(c.id);
+                // Keep what the user typed where there is nothing to suggest.
+                if (v != null) ctrl[c.id]!.text = formatAmount(v, pattern: '0');
+              }
+            });
+          }),
           DeskButton(tr('d_save_plan'), onTap: () => _save(desk, cats, budget: false)),
           DeskButton(tr('d_plan_as_budget'), primary: true, onTap: () => _save(desk, cats, budget: true)),
         ]),

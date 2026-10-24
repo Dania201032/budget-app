@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +16,7 @@ import '../io/export.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
+import '../ui/lock_screen.dart' show appLock;
 import 'excel_page.dart' show autoUpdateExcel;
 import 'kit.dart';
 import 'shell.dart';
@@ -39,6 +42,65 @@ Future<void> openPath(String path) async {
       await Process.run('xdg-open', [path]);
     }
   } catch (_) {}
+}
+
+/// Asks where to save [bytes] (starting in the documents folder), writes the file there and
+/// offers to open it. Returns the saved path, or null when the person cancelled.
+Future<String?> saveWithDialog(BuildContext context, DeskController desk, String fileName, List<int> bytes) async {
+  final dir = await documentsDir(desk);
+  final uri = await appLock.whileInSystemScreen(() => FilePicker.saveFile(
+        fileName: fileName,
+        bytes: Uint8List.fromList(bytes),
+        dialogTitle: tr('d_save_as'),
+        initialDirectory: dir.path,
+      ));
+  if (uri == null) return null;
+  final path = uri.isScheme('file') ? uri.toFilePath(windows: Platform.isWindows) : uri.toString();
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      content: Text(tr('d_saved_to', [path])),
+      action: SnackBarAction(label: tr('d_open'), onPressed: () => openPath(path)),
+    ));
+  }
+  return path;
+}
+
+/// Prints an HTML page to PDF with the browser that comes with Windows (Edge) or Chrome, headless.
+/// Null when neither is installed or printing failed: the caller then saves the HTML.
+Future<List<int>?> htmlToPdf(String html) async {
+  final env = Platform.environment;
+  final candidates = [
+    for (final root in [env['ProgramFiles(x86)'], env['ProgramFiles'], env['LOCALAPPDATA']].whereType<String>()) ...[
+      '$root\\Microsoft\\Edge\\Application\\msedge.exe',
+      '$root\\Google\\Chrome\\Application\\chrome.exe',
+    ],
+  ];
+  final exe = candidates.where((p) => File(p).existsSync()).firstOrNull;
+  if (exe == null) return null;
+  final tmp = await Directory.systemTemp.createTemp('budget-pdf');
+  try {
+    final src = File('${tmp.path}${Platform.pathSeparator}doc.html');
+    final out = File('${tmp.path}${Platform.pathSeparator}doc.pdf');
+    await src.writeAsString(html, encoding: utf8);
+    await Process.run(exe, [
+      '--headless',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-pdf-header-footer',
+      '--user-data-dir=${tmp.path}${Platform.pathSeparator}profile',
+      '--print-to-pdf=${out.path}',
+      Uri.file(src.path).toString(),
+    ]).timeout(const Duration(seconds: 60));
+    return await out.exists() && await out.length() > 0 ? await out.readAsBytes() : null;
+  } catch (e) {
+    debugPrint('pdf: $e');
+    return null;
+  } finally {
+    try {
+      await tmp.delete(recursive: true);
+    } catch (_) {}
+  }
 }
 
 /// On start: last month's report on the 1st (if switched on) and the nightly Excel update.
@@ -72,6 +134,8 @@ class _DocumentsPageState extends State<DocumentsPage> {
   final langs = <String, List<String>>{};
   final bilingual = <String, bool>{};
   int periodChoice = 1;
+  bool asPdf = true;
+  bool busy = false;
   List<FileSystemEntity> recent = [];
 
   static const templates = ['month', 'funds', 'friends', 'plan', 'year', 'csv'];
@@ -171,7 +235,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                   Wrap(spacing: 6, runSpacing: 6, children: [
                     for (var i = 0; i < l.length; i++)
                       Pill(
-                        '${i == 0 ? tr('d_main_lang') : tr('d_second_lang')}: ${languageNames[l[i]]}',
+                        '${i + 1}. ${languageNames[l[i]]}',
                         selected: i == 0,
                         trailing: l.length > 1
                             ? InkWell(
@@ -190,6 +254,9 @@ class _DocumentsPageState extends State<DocumentsPage> {
                       child: Pill(tr('d_add_lang'), dashed: true),
                     ),
                   ]),
+                  const SizedBox(height: 6),
+                  Text(tr('d_doc_copies', [docs.pages.map((g) => g.map((x) => x.toUpperCase()).join(' / ')).join('  ·  ')]),
+                      style: sans(context, size: 12, color: Ledger.mutedOf(context))),
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
                     value: bi,
@@ -205,8 +272,12 @@ class _DocumentsPageState extends State<DocumentsPage> {
                     decoration: BoxDecoration(color: Ledger.overOf(context), borderRadius: BorderRadius.circular(6)),
                     child: Text(tr('d_funds_warn'), style: sans(context, size: 12.5, height: 1.45)),
                   ),
+                if (sel != 'csv') ...[
+                  Seg(options: [(true, 'PDF'), (false, 'HTML')], value: asPdf, onChanged: (v) => setState(() => asPdf = v)),
+                  const SizedBox(height: 10),
+                ],
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  DeskButton(sel == 'csv' ? tr('d_save_csv') : tr('d_save_open'), primary: true, onTap: () => _save(docs)),
+                  DeskButton(busy ? tr('d_making_pdf') : tr('d_save_as'), icon: Icons.save_alt_outlined, primary: true, onTap: busy ? null : () => _save(docs)),
                   if (sel == 'friends')
                     DeskButton(tr('d_copy_text'), onTap: () {
                       Clipboard.setData(ClipboardData(text: docs.friendsText()));
@@ -215,7 +286,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 ]),
                 if (sel != 'csv') ...[
                   const SizedBox(height: 8),
-                  Text(tr('d_pdf_hint'), style: sans(context, size: 12, color: Ledger.mutedOf(context))),
+                  Text(tr(asPdf ? 'd_pdf_hint2' : 'd_html_hint'), style: sans(context, size: 12, color: Ledger.mutedOf(context))),
                 ],
                 if (sel == 'month') ...[
                   const SizedBox(height: 10),
@@ -237,7 +308,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
             5,
             380,
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('${tr('d_preview')} · ${l.map((x) => x.toUpperCase()).join(bi ? ' + ' : ' / ')}', style: sans(context, size: 12.5, color: Ledger.mutedOf(context))),
+              Text('${tr('d_preview')} · ${docs.pages.first.map((x) => x.toUpperCase()).join(' / ')}', style: sans(context, size: 12.5, color: Ledger.mutedOf(context))),
               const SizedBox(height: 8),
               _Paper(preview),
               const SizedBox(height: 14),
@@ -261,11 +332,24 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
   Future<void> _save(_Docs docs) async {
     final desk = context.read<DeskController>();
-    final dir = await documentsDir(desk);
-    final (name, content) = await docs.build(sel, periodChoice);
-    final f = File('${dir.path}${Platform.pathSeparator}$name');
-    await f.writeAsString(content, encoding: utf8);
-    await openPath(f.path);
+    final name = docs.fileName(sel);
+    if (sel == 'csv') {
+      final csv = await docs.csv(periodChoice);
+      if (!mounted) return;
+      await saveWithDialog(context, desk, '$name.csv', utf8.encode(csv));
+    } else {
+      final html = docs.html(sel, periodChoice);
+      List<int>? pdf;
+      if (asPdf) {
+        setState(() => busy = true);
+        pdf = await htmlToPdf(html);
+        if (!mounted) return;
+        setState(() => busy = false);
+        if (pdf == null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('d_pdf_failed'))));
+      }
+      if (!mounted) return;
+      await saveWithDialog(context, desk, pdf != null ? '$name.pdf' : '$name.html', pdf ?? utf8.encode(html));
+    }
     await _loadRecent();
   }
 }
@@ -377,30 +461,60 @@ class _Paper extends StatelessWidget {
   }
 }
 
-/// Builds the documents (HTML for printing to PDF, CSV) from the app's data, in one or two languages.
+/// Builds the documents (PDF/HTML, CSV) from the app's data in any number of languages: every
+/// language gets its own copy of the document, one after another; a bilingual document puts the
+/// first two languages side by side ("Spent / Потрачено") and the rest follow as separate copies.
 class _Docs {
   final DeskController desk;
   final List<String> langs;
   final bool bilingual;
-  _Docs(this.desk, this.langs, {this.bilingual = false});
+  _Docs(this.desk, this.langs, {this.bilingual = false}) : _cur = const [];
 
   AppState get s => desk.state;
   String get base => s.baseCurrency;
 
-  /// A string in the document's language(s).
-  String t(String key, [List<Object?> args = const []]) {
+  /// Languages of each copy, in order.
+  List<List<String>> get pages => bilingual && langs.length > 1
+      ? [
+          [langs[0], langs[1]],
+          for (final l in langs.skip(2)) [l],
+        ]
+      : [for (final l in langs) [l]];
+
+  /// Languages of the copy being built.
+  List<String> _cur;
+  List<String> get _now => _cur.isEmpty ? pages.first : _cur;
+
+  T _inPage<T>(List<String> page, T Function() f) {
+    final saved = _cur;
+    _cur = page;
+    try {
+      return f();
+    } finally {
+      _cur = saved;
+    }
+  }
+
+  /// [f] evaluated in each language of the current copy; equal results are shown once.
+  String both(String Function() f) {
     final saved = currentLanguage;
     try {
-      String one(String l) {
+      final out = <String>[];
+      for (final l in _now) {
         currentLanguage = l;
-        return tr(key, args);
+        final v = f();
+        if (!out.contains(v)) out.add(v);
       }
-
-      return bilingual ? '${one(langs[0])} / ${one(langs[1])}' : one(langs.first);
+      return out.join(' / ');
     } finally {
       currentLanguage = saved;
     }
   }
+
+  /// A string in the current copy's language(s).
+  String t(String key, [List<Object?> args = const []]) => both(() => tr(key, args));
+
+  String date(DateTime d) => both(() => DateFormat.yMMMd(intlLocale).format(d));
 
   String money(int v) => formatMoney(v, base);
 
@@ -423,7 +537,10 @@ class _Docs {
 
   int _monthsOf(int choice) => [3, 6, 12][choice.clamp(0, 2)];
 
-  _Preview preview(String id, int choice) {
+  /// The first copy, for the preview on screen.
+  _Preview preview(String id, int choice) => _inPage(pages.first, () => _preview(id, choice));
+
+  _Preview _preview(String id, int choice) {
     final d = desk.data;
     final now = DateTime.now();
     switch (id) {
@@ -431,35 +548,35 @@ class _Docs {
         final p = _monthPeriod(choice);
         final i = d.monthIndex(p.start);
         final rows = _catRows(i);
-        return _Preview(t('d_doc_month_t'), p.label(), [
+        return _Preview(t('d_doc_month_t'), both(() => monthTitle(p.start)), [
           (t('d_spent'), money(d.spentByMonth[i])),
           (t('d_budget'), money(s.rawMonthBudget(p.start))),
           (t('d_incomes'), money(d.incomeByMonth[i])),
-        ], t('d_categories'), [for (final r in rows) (r.$1, money(r.$2), false), (t('d_total'), money(d.spentByMonth[i]), true)], t('d_made_by', [DateFormat.yMMMd(langs.first).format(now)]));
+        ], t('d_categories'), [for (final r in rows) (r.$1, money(r.$2), false), (t('d_total'), money(d.spentByMonth[i]), true)], both(() => tr('d_made_by', [DateFormat.yMMMd(intlLocale).format(now)])));
       case 'funds':
         final m = _monthsOf(choice);
         final inc = d.incomeByMonth.sublist(13 - m).fold<int>(0, (a, b) => a + b);
         final sp = d.spentByMonth.sublist(13 - m).fold<int>(0, (a, b) => a + b);
-        return _Preview(t('d_funds_title'), t('d_funds_period', [DateFormat.yMMMd(langs.first).format(now), m]), [
+        return _Preview(t('d_funds_title'), both(() => tr('d_funds_period', [DateFormat.yMMMd(intlLocale).format(now), m])), [
           (t('d_total_balance'), money(s.totalBalance + desk.countedHoldings())),
           (t('d_avg_inflow'), money(inc ~/ m)),
           (t('d_avg_spending'), money(sp ~/ m)),
         ], t('d_balances'), [
           for (final a in s.accounts.where((a) => s.balances.containsKey(a.id)))
-            ('${s.accountName(a)}${a.currency == base ? '' : ' · ${formatMoney(s.balances[a.id]!, a.currency)}'}', money(s.toBaseAmount(s.balances[a.id]!, a.currency, now) ?? 0), false),
+            ('${both(() => s.accountName(a))}${a.currency == base ? '' : ' · ${formatMoney(s.balances[a.id]!, a.currency)}'}', money(s.toBaseAmount(s.balances[a.id]!, a.currency, now) ?? 0), false),
           (t('d_total'), money(s.totalBalance + desk.countedHoldings()), true),
         ], t('d_funds_foot'));
       case 'friends':
         final by = _debtsByPerson(all: choice == 1);
         final total = by.values.fold<int>(0, (a, l) => a + l.fold<int>(0, (x, dbt) => x + (s.toBaseAmount(dbt.openMinor, dbt.currency, now) ?? 0)));
-        return _Preview(t('d_doc_friends_t'), DateFormat.yMMMd(langs.first).format(now), [
+        return _Preview(t('d_doc_friends_t'), date(now), [
           (t('d_owed_to_you'), money(total)),
           (t('d_people'), '${by.length}'),
           (t('d_items'), '${by.values.fold<int>(0, (a, l) => a + l.length)}'),
         ], t('d_by_person'), [
           for (final e in by.entries) ...[
             (e.key, money(e.value.fold<int>(0, (x, dbt) => x + (s.toBaseAmount(dbt.openMinor, dbt.currency, now) ?? 0))), true),
-            for (final dbt in e.value) ('  ${DateFormat.MMMd(langs.first).format(dbt.createdAt)}', formatMoney(dbt.openMinor, dbt.currency), false),
+            for (final dbt in e.value) ('  ${both(() => DateFormat.MMMd(intlLocale).format(dbt.createdAt))}', formatMoney(dbt.openMinor, dbt.currency), false),
           ],
         ], t('d_friends_foot'));
       case 'plan':
@@ -467,7 +584,7 @@ class _Docs {
         final rows = _planRows();
         final perMonth = rows.fold<int>(0, (a, r) => a + r.$2);
         final income = _regularIncome();
-        return _Preview(t('d_doc_plan_t'), t('d_plan_period', [monthTitle(DateTime(now.year, now.month + 1)), m]), [
+        return _Preview(t('d_doc_plan_t'), both(() => tr('d_plan_period', [monthTitle(DateTime(now.year, now.month + 1)), m])), [
           (t('d_per_month'), money(perMonth)),
           (t('d_for_period'), money(perMonth * m)),
           (t('d_shortfall'), money((perMonth - income) * m > 0 ? (perMonth - income) * m : 0)),
@@ -493,7 +610,8 @@ class _Docs {
     }
   }
 
-  String _cat(int? id) => id == null ? t('d_uncategorized') : (s.categoryById[id] == null ? '—' : s.categoryName(s.categoryById[id]!));
+  /// A category's name in the copy's language(s): built-in categories are translated, the user's own keep their name.
+  String _cat(int? id) => id == null ? t('d_uncategorized') : (s.categoryById[id] == null ? '—' : both(() => s.categoryName(s.categoryById[id]!)));
 
   List<(String, int)> _catRows(int i) {
     final d = desk.data;
@@ -506,7 +624,7 @@ class _Docs {
     final plan = desk.profile.categoryPlan;
     return [
       for (final c in s.categoriesOf(TxnKind.expense))
-        if ((plan[c.id] ?? d.median3(c.id)) > 0) (s.categoryName(c), plan[c.id] ?? d.median3(c.id)),
+        if ((plan[c.id] ?? d.median3(c.id)) > 0) (both(() => s.categoryName(c)), plan[c.id] ?? d.median3(c.id)),
     ];
   }
 
@@ -529,46 +647,55 @@ class _Docs {
     return by;
   }
 
-  String friendsText() {
-    final now = DateTime.now();
-    final sb = StringBuffer('${t('d_doc_friends_t')} · ${DateFormat.yMMMd(langs.first).format(now)}\n');
-    for (final e in _debtsByPerson(all: false).entries) {
-      final sum = e.value.fold<int>(0, (x, dbt) => x + (s.toBaseAmount(dbt.openMinor, dbt.currency, now) ?? 0));
-      sb.writeln('${e.key}: ${money(sum)}');
-    }
-    return sb.toString();
+  String friendsText() => _inPage(pages.first, () {
+        final now = DateTime.now();
+        final sb = StringBuffer('${t('d_doc_friends_t')} · ${date(now)}\n');
+        for (final e in _debtsByPerson(all: false).entries) {
+          final sum = e.value.fold<int>(0, (x, dbt) => x + (s.toBaseAmount(dbt.openMinor, dbt.currency, now) ?? 0));
+          sb.writeln('${e.key}: ${money(sum)}');
+        }
+        return sb.toString();
+      });
+
+  /// Suggested file name without the extension.
+  String fileName(String id) {
+    final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    if (id == 'csv') return 'operations_$stamp';
+    return '${tr('d_doc_${id}_t')} $stamp'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-');
   }
 
-  /// Builds the file: (name, content).
-  Future<(String, String)> build(String id, int choice) async {
-    final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    if (id == 'csv') {
-      final now = DateTime.now();
-      final p = switch (choice) {
-        0 => Period.containing(PeriodType.month, now),
-        1 => Period.containing(PeriodType.year, now),
-        _ => null,
-      };
-      final txns = await s.txnsForExport(p);
-      final rows = transactionRows(
-        txns: txns,
-        categoryName: (id) => id == null ? '' : (s.categoryById[id] == null ? '' : s.categoryName(s.categoryById[id]!)),
-        accountName: (id) => id == null ? '' : (s.accountById[id] == null ? '' : s.accountName(s.accountById[id]!)),
-        baseCurrency: base,
-        toBase: s.toBase,
-      );
-      return ('operations_$stamp.csv', '﻿${toCsv(rows)}');
-    }
-    final p = preview(id, choice);
-    final html = id == 'month' ? month(_monthPeriod(choice)) : _html(p);
-    return ('${tr('d_doc_${id}_t')} $stamp.html'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-'), html);
+  /// The CSV of operations for the chosen period.
+  Future<String> csv(int choice) async {
+    final now = DateTime.now();
+    final p = switch (choice) {
+      0 => Period.containing(PeriodType.month, now),
+      1 => Period.containing(PeriodType.year, now),
+      _ => null,
+    };
+    final txns = await s.txnsForExport(p);
+    final rows = transactionRows(
+      txns: txns,
+      categoryName: (id) => id == null ? '' : (s.categoryById[id] == null ? '' : s.categoryName(s.categoryById[id]!)),
+      accountName: (id) => id == null ? '' : (s.accountById[id] == null ? '' : s.accountName(s.accountById[id]!)),
+      baseCurrency: base,
+      toBase: s.toBase,
+    );
+    return '﻿${toCsv(rows)}';
   }
+
+  /// The whole document as one printable HTML page: a copy per language, each from a new sheet.
+  String html(String id, int choice) => _page([
+        for (final pg in pages) _inPage(pg, () => id == 'month' ? _monthSection(_monthPeriod(choice)) : _section(_preview(id, choice))),
+      ]);
 
   /// The month report with a day chart, as a printable page.
-  String month(Period p) {
+  String month(Period p) => _page([for (final pg in pages) _inPage(pg, () => _monthSection(p))]);
+
+  String _monthSection(Period p) {
     final d = desk.data;
     final i = d.monthIndex(p.start);
-    final pv = preview('month', p.start.month == DateTime.now().month ? 1 : 0);
+    final now = DateTime.now();
+    final pv = _preview('month', p.start.year == now.year && p.start.month == now.month ? 1 : 0);
     final days = <int>[];
     for (final t in d.txns) {
       if (t.kind != TxnKind.expense || t.excluded || d.monthIndex(t.time) != i) continue;
@@ -590,19 +717,32 @@ class _Docs {
           'fill="${limit > 0 && days[k] > limit ? '#B4532A' : '#0E3B34'}"/>');
     }
     final chart = '<svg viewBox="0 0 ${n * 22} 140" width="100%" role="img">$bars<line x1="0" y1="130" x2="${n * 22}" y2="130" stroke="#1B2422"/></svg>';
-    final insights = desk.data.insights.take(4).map((x) => '<li>${_esc(x.title)} — ${_esc(x.body)}</li>').join();
-    return _html(pv, extra: '<h2>${_esc(t('d_by_day'))}</h2>$chart${insights.isEmpty ? '' : '<h2>${_esc(t('d_highlights'))}</h2><ul>$insights</ul>'}');
+    // The highlights are written in the app's language, so they go only into a copy in that language.
+    final insights = _now.contains(currentLanguage) ? desk.data.insights.take(4).map((x) => '<li>${_esc(x.title)} — ${_esc(x.body)}</li>').join() : '';
+    return _section(pv, extra: '<h2>${_esc(t('d_by_day'))}</h2>$chart${insights.isEmpty ? '' : '<h2>${_esc(t('d_highlights'))}</h2><ul>$insights</ul>'}');
   }
 
   static String _esc(String s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
-  String _html(_Preview p, {String extra = ''}) {
+  String _section(_Preview p, {String extra = ''}) {
     final kpis = p.kpis.map((k) => '<div class="k"><span>${_esc(k.$1)}</span><b>${_esc(k.$2)}</b></div>').join();
     final rows = p.rows.map((r) => '<tr${r.$3 ? ' class="b"' : ''}><td>${_esc(r.$1)}</td><td class="n">${_esc(r.$2)}</td></tr>').join();
-    return '''<!doctype html><html lang="${langs.first}"><head><meta charset="utf-8"><title>${_esc(p.title)}</title>
+    return '''<section lang="${_now.first}">
+<header><h1>${_esc(p.title)}</h1><p>${_esc(p.sub)}</p></header>
+<div class="ks">$kpis</div>
+<h2>${_esc(p.tableTitle)}</h2><table>$rows</table>
+$extra
+<footer>${_esc(p.foot)}</footer>
+</section>''';
+  }
+
+  String _page(List<String> sections) {
+    final title = _inPage(pages.first, () => _esc(t('d_nav_documents')));
+    return '''<!doctype html><html lang="${langs.first}"><head><meta charset="utf-8"><title>$title</title>
 <style>
 @page{size:A4;margin:16mm}
 body{font-family:"IBM Plex Sans","Segoe UI","Microsoft YaHei",sans-serif;color:#1B2422;max-width:780px;margin:24px auto;padding:0 24px}
+section+section{break-before:page;page-break-before:always;margin-top:48px}
 header{border-bottom:2px solid #1B2422;padding-bottom:10px;margin-bottom:18px}
 h1{font-size:28px;margin:0 0 4px}header p{margin:0;color:#5E6763;font-size:13px}
 .ks{display:flex;gap:10px;margin:0 0 18px}.k{flex:1;background:#F5F1E7;padding:10px 12px}.k span{display:block;font-size:12px;color:#5E6763}.k b{font-family:"IBM Plex Mono",Consolas,monospace;font-size:20px}
@@ -612,11 +752,7 @@ tr.b td{font-weight:600;border-bottom:1.5px solid #1B2422}
 ul{padding-left:18px;line-height:1.55;font-size:13.5px}
 footer{margin-top:26px;padding-top:10px;border-top:1px solid #D9D4C7;font-size:12px;color:#5E6763}
 </style></head><body>
-<header><h1>${_esc(p.title)}</h1><p>${_esc(p.sub)}</p></header>
-<div class="ks">$kpis</div>
-<h2>${_esc(p.tableTitle)}</h2><table>$rows</table>
-$extra
-<footer>${_esc(p.foot)}</footer>
+${sections.join('\n')}
 </body></html>''';
   }
 }

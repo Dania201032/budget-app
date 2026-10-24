@@ -30,26 +30,13 @@ class DeskSettingsPage extends StatefulWidget {
 class _DeskSettingsPageState extends State<DeskSettingsPage> {
   final scroll = ScrollController();
   final keys = {for (final k in _sections) k: GlobalKey()};
-  List<Map<String, Object?>> rules = [];
 
-  static const _sections = ['general', 'accounts', 'currencies', 'categories', 'rules', 'hints', 'sync', 'files', 'look', 'security', 'keys', 'about'];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRules();
-  }
+  static const _sections = ['general', 'accounts', 'currencies', 'categories', 'hints', 'sync', 'files', 'look', 'security', 'keys', 'about'];
 
   @override
   void dispose() {
     scroll.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadRules() async {
-    final s = context.read<AppState>();
-    final r = await s.repo.db.rawQuery('SELECT merchant, kind, category_id FROM merchant_rules ORDER BY updated_at DESC LIMIT 60');
-    if (mounted) setState(() => rules = r);
   }
 
   void _jump(String k) {
@@ -184,22 +171,6 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
         row(tr('d_edit_categories'), tr('d_edit_categories_sub'), DeskButton(tr('d_open'), onTap: () => _push(const CategoriesScreen()))),
         row(tr('d_category_plan'), tr('d_category_plan_sub'), DeskButton(tr('d_open'), onTap: () => desk.go(DeskPages.forecast))),
       ]),
-      section('rules', tr('d_rules'), [
-        if (rules.isEmpty) Text(tr('d_no_rules'), style: sans(context, color: muted)),
-        for (final r in rules.take(30))
-          row(
-            '${r['merchant']}',
-            '→ ${s.categoryById[r['category_id']] == null ? '—' : s.categoryName(s.categoryById[r['category_id']]!)}',
-            IconButton(
-              tooltip: tr('delete'),
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                await s.repo.db.delete('merchant_rules', where: 'merchant = ? AND kind = ?', whereArgs: [r['merchant'], r['kind']]);
-                await _loadRules();
-              },
-            ),
-          ),
-      ], lead: tr('d_rules_sub')),
       section('hints', tr('d_hints'), [
         row(tr('d_hints_count'), null,
             Choice(options: [(2, '2'), (4, '4'), (6, '6'), (99, tr('d_all'))], value: p.hintsShown, onChanged: (v) {

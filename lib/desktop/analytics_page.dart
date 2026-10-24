@@ -10,6 +10,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
 import '../ui/settings_screen.dart' show pickCurrency;
+import 'charts.dart';
 import 'kit.dart';
 import 'shell.dart';
 
@@ -24,6 +25,7 @@ class AnalyticsPage extends StatefulWidget {
 class _AnalyticsPageState extends State<AnalyticsPage> {
   int months = 12;
   String? currency;
+  final hiddenLines = <int?>{};
 
   @override
   Widget build(BuildContext context) {
@@ -36,36 +38,55 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     // Amounts are kept in the base currency and shown in the chosen one at today's rate.
     int conv(num v) => cur == base ? v.round() : (s.rates.convert(v.round(), base, cur, now) ?? v.round());
     String money(num v) => formatMoney(conv(v), cur);
-    String compact(num v) => NumberFormat.compact(locale: intlLocale).format(conv(v) / 100);
+    double units(num v) => conv(v) / 100;
+    String unitMoney(double v) => formatMoney((v * 100).round(), cur);
     final from = 13 - months;
     final idx = [for (var i = from; i < 13; i++) i];
+    final mLabels = [for (final i in idx) DateFormat.MMM(intlLocale).format(d.months[i])];
     final spent = idx.fold<int>(0, (a, i) => a + d.spentByMonth[i]);
     final income = idx.fold<int>(0, (a, i) => a + d.incomeByMonth[i]);
+    String monthFilter(int k) => 'month:${DateFormat('yyyy-MM').format(d.months[idx[k]])}';
 
-    // Daily totals of the period for the median and the record day.
+    // Daily totals of the period: median, record day and the weekday average.
     final byDay = <DateTime, int>{};
+    final byAccount = <int?, int>{};
     for (final t in d.txns) {
       if (t.excluded || t.kind.name != 'expense' || d.monthIndex(t.time) < from) continue;
+      final v = s.toBase(t) ?? 0;
       final k = DateTime(t.time.year, t.time.month, t.time.day);
-      byDay[k] = (byDay[k] ?? 0) + (s.toBase(t) ?? 0);
+      byDay[k] = (byDay[k] ?? 0) + v;
+      byAccount[t.accountId] = (byAccount[t.accountId] ?? 0) + v;
     }
     final days = DateTime(now.year, now.month, now.day).difference(d.months[from]).inDays + 1;
     final sortedDays = byDay.values.toList()..sort();
     final median = sortedDays.isEmpty ? 0 : sortedDays[sortedDays.length ~/ 2];
     final record = byDay.entries.fold<MapEntry<DateTime, int>?>(null, (a, e) => a == null || e.value > a.value ? e : a);
-    final byAccount = <int?, int>{};
-    for (final t in d.txns) {
-      if (t.excluded || t.kind.name != 'expense' || d.monthIndex(t.time) < from) continue;
-      byAccount[t.accountId] = (byAccount[t.accountId] ?? 0) + (s.toBase(t) ?? 0);
-    }
     final topAccount = byAccount.entries.fold<MapEntry<int?, int>?>(null, (a, e) => a == null || e.value > a.value ? e : a);
+    final weekdaySum = List.filled(7, 0), weekdayCount = List.filled(7, 0);
+    for (var day = d.months[from]; !day.isAfter(now); day = DateTime(day.year, day.month, day.day + 1)) {
+      weekdayCount[day.weekday - 1]++;
+      weekdaySum[day.weekday - 1] += byDay[day] ?? 0;
+    }
+    final weekdayNames = [for (var i = 0; i < 7; i++) DateFormat.E(intlLocale).format(DateTime(2024, 1, 1 + i))];
+    double weekdayAvg(int w) => weekdayCount[w] == 0 ? 0 : weekdaySum[w] / weekdayCount[w];
 
-    // The five biggest categories of the period; the rest is "other".
-    final catTotals = {
-      for (final e in d.spentByCategory.entries) e.key: idx.fold<int>(0, (a, i) => a + e.value[i]),
-    };
-    final top = (catTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(5).map((e) => e.key).toList();
+    // Categories of the period, biggest first.
+    final catTotals = {for (final e in d.spentByCategory.entries) e.key: idx.fold<int>(0, (a, i) => a + e.value[i])}
+      ..removeWhere((k, v) => v <= 0);
+    final ranked = (catTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).map((e) => e.key).toList();
     String catName(int? id) => id == null ? tr('d_uncategorized') : (s.categoryById[id] == null ? '—' : s.categoryName(s.categoryById[id]!));
+    Color catColor(int? id, int i) => id != null && s.categoryById[id] != null ? Color(s.categoryById[id]!.color) : _series[i % _series.length];
+    final donutIds = ranked.take(7).toList();
+    final restTotal = ranked.skip(7).fold<int>(0, (a, id) => a + catTotals[id]!);
+    final topLines = ranked.take(5).toList();
+
+    // Money at the end of each month, worked back from today's total with each month's net flow.
+    final balanceEnd = List<double>.filled(13, 0);
+    balanceEnd[12] = (s.totalBalance + desk.countedHoldings()).toDouble();
+    for (var i = 12; i > 0; i--) {
+      balanceEnd[i - 1] = balanceEnd[i] - (d.incomeByMonth[i] - d.spentByMonth[i]);
+    }
+    double rate(int i) => d.incomeByMonth[i] == 0 ? 0.0 : (d.incomeByMonth[i] - d.spentByMonth[i]) / d.incomeByMonth[i] * 100;
 
     return DeskPage(
       title: tr('d_nav_analytics'),
@@ -104,40 +125,174 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Kpi(tr('d_income_period'), money(income), note: spent == 0 ? null : tr('d_covers', ['${(income / spent * 100).round()}%'])),
           Kpi(tr('d_avg_day'), money(days <= 0 ? 0 : spent / days), note: tr('d_median', [money(median)])),
           Kpi(tr('d_record_day'), record == null ? '—' : money(record.value),
-              note: record == null ? null : DateFormat.yMMMMd(intlLocale).format(record.key)),
-          Kpi(tr('d_main_account'), topAccount == null || spent == 0 ? '—' : '${(topAccount.value / spent * 100).round()}%',
-              note: topAccount?.key == null ? null : s.accountName(s.accountById[topAccount!.key]!)),
+              note: record == null ? null : DateFormat.yMMMMd(intlLocale).format(record.key),
+              onTap: record == null ? null : () => desk.go(DeskPages.operations, filter: 'day:${DateFormat('yyyy-MM-dd').format(record.key)}')),
+          Kpi(tr('d_main_account'),
+              topAccount?.key == null || s.accountById[topAccount!.key] == null ? '—' : s.accountName(s.accountById[topAccount.key]!),
+              note: topAccount == null || spent == 0 ? null : tr('d_main_account_note', ['${(topAccount.value / spent * 100).round()}%'])),
         ]),
         Panel(
-          title: tr('d_by_month'),
-          trailing: Wrap(spacing: 12, runSpacing: 4, children: [
-            for (var i = 0; i < top.length; i++) _legend(context, _series[i], catName(top[i])),
-            _legend(context, _series.last, tr('d_other')),
-            _legend(context, Ledger.inkOf(context), tr('d_incomes'), line: true),
+          title: tr('d_cashflow'),
+          subtitle: tr('d_cashflow_sub'),
+          trailing: Wrap(spacing: 14, children: [
+            _legend(context, const Color(0xFF4F9E86), tr('d_incomes')),
+            _legend(context, Ledger.inkOf(context), tr('d_expenses')),
           ]),
-          child: _MonthBars(
-            months: [for (final i in idx) d.months[i]],
-            parts: [
+          child: DeskBarChart(
+            xLabels: mLabels,
+            rodWidth: months == 12 ? 12 : 20,
+            groups: [
               for (final i in idx)
                 [
-                  for (final id in top) d.spentByCategory[id]![i],
-                  d.spentByMonth[i] - top.fold<int>(0, (a, id) => a + d.spentByCategory[id]![i]),
+                  DRod([(units(d.incomeByMonth[i]), const Color(0xFF4F9E86))]),
+                  DRod([(units(d.spentByMonth[i]), Ledger.inkOf(context))]),
                 ],
             ],
-            income: [for (final i in idx) d.incomeByMonth[i]],
-            label: compact,
+            tooltip: (k) {
+              final i = idx[k];
+              final net = d.incomeByMonth[i] - d.spentByMonth[i];
+              return '${DateFormat.yMMMM(intlLocale).format(d.months[i])}\n${tr('d_incomes')}: ${money(d.incomeByMonth[i])}\n'
+                  '${tr('d_expenses')}: ${money(d.spentByMonth[i])}\n${net >= 0 ? tr('d_saved_m') : tr('d_from_savings_m')}: ${money(net.abs())}';
+            },
+            onTap: (k) => desk.go(DeskPages.operations, filter: monthFilter(k)),
           ),
         ),
         SplitRow([
+          (
+            1,
+            420,
+            Panel(
+              title: tr('d_structure'),
+              subtitle: tr('d_structure_sub'),
+              child: Wrap(spacing: 24, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                DeskDonut(
+                  format: unitMoney,
+                  slices: [
+                    for (var i = 0; i < donutIds.length; i++) (catName(donutIds[i]), units(catTotals[donutIds[i]]!), catColor(donutIds[i], i)),
+                    if (restTotal > 0) (tr('d_other'), units(restTotal), const Color(0xFF9A958A)),
+                  ],
+                  onTap: (i) {
+                    if (i < donutIds.length && donutIds[i] != null) desk.go(DeskPages.operations, filter: 'cat:${donutIds[i]}');
+                  },
+                ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (var i = 0; i < donutIds.length; i++)
+                      InkWell(
+                        onTap: donutIds[i] == null ? null : () => desk.go(DeskPages.operations, filter: 'cat:${donutIds[i]}'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(children: [
+                            Swatch(catColor(donutIds[i], i)),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(catName(donutIds[i]), overflow: TextOverflow.ellipsis, style: sans(context, size: 13))),
+                            Text('${(catTotals[donutIds[i]]! / (spent == 0 ? 1 : spent) * 100).round()}%',
+                                style: mono(size: 12.5, color: Ledger.mutedOf(context))),
+                          ]),
+                        ),
+                      ),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
           (1, 420, _Changes(catName: catName, money: money)),
+        ]),
+        Panel(
+          title: tr('d_cats_over_time'),
+          subtitle: tr('d_cats_over_time_sub'),
+          trailing: Wrap(spacing: 4, children: [
+            for (var i = 0; i < topLines.length; i++)
+              TextButton.icon(
+                onPressed: () => setState(() => hiddenLines.contains(topLines[i]) ? hiddenLines.remove(topLines[i]) : hiddenLines.add(topLines[i])),
+                icon: Swatch(hiddenLines.contains(topLines[i]) ? Ledger.trackOf(context) : catColor(topLines[i], i)),
+                label: Text(catName(topLines[i]),
+                    style: sans(context, size: 12.5, color: hiddenLines.contains(topLines[i]) ? Ledger.mutedOf(context) : null)),
+              ),
+          ]),
+          child: DeskLineChart(
+            xLabels: mLabels,
+            format: unitMoney,
+            xTitle: (k) => DateFormat.yMMMM(intlLocale).format(d.months[idx[k]]),
+            onTap: (k) => desk.go(DeskPages.operations, filter: monthFilter(k)),
+            lines: [
+              for (var i = 0; i < topLines.length; i++)
+                if (!hiddenLines.contains(topLines[i]))
+                  DLine([for (final m in idx) units(d.spentByCategory[topLines[i]]![m])], catColor(topLines[i], i), catName(topLines[i])),
+            ],
+          ),
+        ),
+        SplitRow([
+          (
+            1,
+            420,
+            Panel(
+              title: tr('d_balance_trend'),
+              subtitle: tr('d_balance_trend_sub'),
+              child: DeskLineChart(
+                height: 220,
+                xLabels: mLabels,
+                format: unitMoney,
+                xTitle: (k) => DateFormat.yMMMM(intlLocale).format(d.months[idx[k]]),
+                lines: [DLine([for (final i in idx) units(balanceEnd[i])], Ledger.accentOf(context), tr('d_all_money'), area: true, width: 2.6)],
+              ),
+            ),
+          ),
+          (
+            1,
+            420,
+            Panel(
+              title: tr('d_savings_rate'),
+              subtitle: tr('d_savings_rate_sub'),
+              child: DeskBarChart(
+                height: 220,
+                xLabels: mLabels,
+                rodWidth: months == 12 ? 14 : 22,
+                groups: [
+                  for (final i in idx) [DRod([(rate(i).clamp(-200, 100).toDouble(), rate(i) >= 0 ? const Color(0xFF4F9E86) : warnColor)])],
+                ],
+                tooltip: (k) {
+                  final i = idx[k];
+                  return '${DateFormat.yMMMM(intlLocale).format(d.months[i])}\n'
+                      '${d.incomeByMonth[i] == 0 ? tr('d_no_income_month') : tr('d_of_income', ['${rate(i).round()}%'])}';
+                },
+                onTap: (k) => desk.go(DeskPages.operations, filter: monthFilter(k)),
+              ),
+            ),
+          ),
+        ]),
+        SplitRow([
+          (
+            1,
+            420,
+            Panel(
+              title: tr('d_by_weekday'),
+              subtitle: tr('d_by_weekday_sub'),
+              child: DeskBarChart(
+                height: 220,
+                rodWidth: 26,
+                xLabels: weekdayNames,
+                groups: [
+                  for (var w = 0; w < 7; w++) [DRod([(units(weekdayAvg(w)), w >= 5 ? goldColor : Ledger.accentOf(context))])],
+                ],
+                tooltip: (w) => '${weekdayNames[w]}\n${tr('d_avg_short', [money(weekdayAvg(w))])}',
+              ),
+            ),
+          ),
           (1, 420, _Heat(d.heat, money)),
         ]),
         Panel(
           title: tr('d_cat_trends'),
           subtitle: tr('d_cat_trends_sub'),
           child: AutoGrid(minWidth: 220, spacing: 12, children: [
-            for (final e in (catTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(12))
-              _Spark(name: catName(e.key), values: d.spentByCategory[e.key]!.sublist(1), money: money),
+            for (final id in ranked.take(12))
+              _Spark(
+                name: catName(id),
+                values: d.spentByCategory[id]!.sublist(1),
+                money: money,
+                onTap: id == null ? null : () => desk.go(DeskPages.operations, filter: 'cat:$id'),
+              ),
           ]),
         ),
         SplitRow([
@@ -148,52 +303,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _legend(BuildContext c, Color color, String label, {bool line = false}) => Row(mainAxisSize: MainAxisSize.min, children: [
-        line ? Container(width: 14, height: 2, color: color) : Swatch(color, size: 11),
+  Widget _legend(BuildContext c, Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Swatch(color, size: 11),
         const SizedBox(width: 6),
         Text(label, style: sans(c, size: 12.5)),
       ]);
-}
-
-class _MonthBars extends StatelessWidget {
-  final List<DateTime> months;
-  final List<List<int>> parts;
-  final List<int> income;
-  final String Function(num) label;
-  const _MonthBars({required this.months, required this.parts, required this.income, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final totals = [for (final p in parts) p.fold<int>(0, (a, b) => a + b)];
-    final maxV = [...totals, ...income, 1].reduce(math.max).toDouble();
-    const h = 220.0;
-    return SizedBox(
-      height: h + 64,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        for (var i = 0; i < months.length; i++)
-          Expanded(
-            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-              SizedBox(
-                height: h,
-                child: Stack(alignment: Alignment.bottomCenter, children: [
-                  FractionallySizedBox(
-                    widthFactor: .5,
-                    child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                      for (var k = parts[i].length - 1; k >= 0; k--)
-                        if (parts[i][k] > 0) Container(height: (parts[i][k] / maxV * h).clamp(1, h), color: _series[k.clamp(0, _series.length - 1)]),
-                    ]),
-                  ),
-                  Positioned(bottom: income[i] / maxV * h, left: 8, right: 8, child: Container(height: 2, color: Ledger.inkOf(context))),
-                ]),
-              ),
-              const SizedBox(height: 6),
-              Text(DateFormat.MMM(intlLocale).format(months[i]), style: mono(size: 11, color: Ledger.mutedOf(context))),
-              Text(label(totals[i]), style: mono(size: 11, weight: FontWeight.w500)),
-            ]),
-          ),
-      ]),
-    );
-  }
 }
 
 class _Changes extends StatelessWidget {
@@ -314,7 +428,8 @@ class _Spark extends StatelessWidget {
   final String name;
   final List<int> values;
   final String Function(num) money;
-  const _Spark({required this.name, required this.values, required this.money});
+  final VoidCallback? onTap;
+  const _Spark({required this.name, required this.values, required this.money, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +438,12 @@ class _Spark extends StatelessWidget {
     final t = prior == 0 ? 0 : ((recent - prior) / prior * 100).round();
     final up = t > 5;
     final avg = values.fold<int>(0, (a, b) => a + b) / values.length;
-    return Container(
+    return Tooltip(
+      message: tr('d_click_to_open'),
+      child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(border: Border.all(color: Ledger.trackOf(context)), borderRadius: BorderRadius.circular(6)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -340,7 +460,7 @@ class _Spark extends StatelessWidget {
           Text(money(values.last), style: mono(size: 12)),
         ]),
       ]),
-    );
+    )));
   }
 }
 

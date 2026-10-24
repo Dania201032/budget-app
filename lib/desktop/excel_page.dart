@@ -13,7 +13,7 @@ import '../io/xlsx_book.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
-import 'documents_page.dart' show documentsDir, openPath;
+import 'documents_page.dart' show documentsDir, saveWithDialog;
 import 'kit.dart';
 import 'shell.dart';
 
@@ -464,7 +464,7 @@ Future<void> autoUpdateExcel(DeskController desk) async {
   final o = XOpts.fromJson(desk.profile.excelOptions);
   if (o.fileName.isEmpty) return;
   final dir = await documentsDir(desk);
-  final f = File('${dir.path}${Platform.pathSeparator}${o.fileName}');
+  final f = File(o.fileName).isAbsolute ? File(o.fileName) : File('${dir.path}${Platform.pathSeparator}${o.fileName}');
   if (await f.exists()) {
     final m = (await f.stat()).modified;
     final now = DateTime.now();
@@ -496,7 +496,7 @@ class _ExcelPageState extends State<ExcelPage> {
     final desk = context.read<DeskController>();
     o = XOpts.fromJson(desk.profile.excelOptions);
     if (desk.profile.excelOptions.isEmpty) o.applyPreset('budget');
-    name.text = o.fileName.isEmpty ? '${tr('d_x_file')} ${DateFormat('yyyy-MM').format(DateTime.now())}.xlsx' : o.fileName;
+    name.text = o.fileName.isEmpty ? '${tr('d_x_file')} ${DateFormat('yyyy-MM').format(DateTime.now())}.xlsx' : o.fileName.split(RegExp(r'[\\/]')).last;
     HardwareKeyboard.instance.addHandler(_key);
   }
 
@@ -534,16 +534,17 @@ class _ExcelPageState extends State<ExcelPage> {
     var file = name.text.trim();
     if (file.isEmpty) file = 'budget.xlsx';
     if (!file.toLowerCase().endsWith('.xlsx')) file = '$file.xlsx';
-    o.fileName = file;
-    desk.profile.excelOptions = jsonEncode(o.toJson());
-    desk.profile.autoExcel = o.auto;
-    await desk.saveProfile(refold: false);
-    final dir = await documentsDir(desk);
-    final path = '${dir.path}${Platform.pathSeparator}$file';
+    final bytes = writeBook(buildBook(s, desk, o, list), theme: o.xtheme, numberFormat: o.numberFormatFor(s.baseCurrency), dateFormat: o.excelDate);
+    if (!mounted) return;
     try {
-      await File(path).writeAsBytes(writeBook(buildBook(s, desk, o, list),
-          theme: o.xtheme, numberFormat: o.numberFormatFor(s.baseCurrency), dateFormat: o.excelDate));
-      await openPath(path);
+      final path = await saveWithDialog(context, desk, file, bytes);
+      if (path == null) return;
+      // The nightly update rewrites the file where it was saved.
+      o.fileName = path;
+      name.text = path.split(RegExp(r'[\\/]')).last;
+      desk.profile.excelOptions = jsonEncode(o.toJson());
+      desk.profile.autoExcel = o.auto;
+      await desk.saveProfile(refold: false);
     } on FileSystemException {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('d_x_file_busy'))));
     }
@@ -564,6 +565,7 @@ class _ExcelPageState extends State<ExcelPage> {
       title: tr('d_excel_title'),
       subtitle: tr('d_excel_sub'),
       actions: [
+        DeskButton(tr('d_back'), icon: Icons.arrow_back, onTap: () => desk.go(DeskPages.documents)),
         SizedBox(
           width: 280,
           child: TextField(controller: name, decoration: InputDecoration(isDense: true, labelText: tr('d_x_file_name'))),
