@@ -13,7 +13,7 @@ import '../platform.dart';
 import '../security/secure_store.dart';
 import '../sync/sync_tables.dart';
 
-const schemaVersion = 10;
+const schemaVersion = 11;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
@@ -35,6 +35,7 @@ Future<void> _create(Database db, int _) async {
   await _migrateV8(db);
   await migrateSyncV9(db);
   await migrateHouseholdV10(db);
+  await _migrateV11(db);
 }
 
 Future<void> _upgrade(Database db, int from, int to) async {
@@ -49,6 +50,14 @@ Future<void> _upgrade(Database db, int from, int to) async {
   if (from < 9) await migrateSyncV9(db);
   // v10: the shared budget (people, account owners, who recorded what).
   if (from < 10) await migrateHouseholdV10(db);
+  if (from < 11) await _migrateV11(db);
+}
+
+/// v11: a purchase paid from a savings goal ("close a goal") remembers the goal.
+Future<void> _migrateV11(Database db) async {
+  final cols = {for (final c in await db.rawQuery('PRAGMA table_info(transactions)')) c['name'] as String};
+  if (cols.isEmpty || cols.contains('goal_id')) return;
+  await db.execute('ALTER TABLE transactions ADD COLUMN goal_id INTEGER REFERENCES goals(id) ON DELETE SET NULL');
 }
 
 /// The app's database. On the phone it is encrypted (SQLCipher, AES-256) with a random key kept

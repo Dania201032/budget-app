@@ -156,6 +156,15 @@ class Repository {
   Future<List<Goal>> goals() async =>
       (await db.query('goals', where: 'archived = 0', orderBy: 'created_at')).map(Goal.fromRow).toList();
 
+  /// Every goal's name, closed ones included (for purchases paid from them).
+  Future<Map<int, String>> goalNames() async =>
+      {for (final r in await db.query('goals', columns: ['id', 'name'])) r['id'] as int: r['name'] as String};
+
+  Future<Goal?> goalById(int id) async {
+    final r = await db.query('goals', where: 'id = ?', whereArgs: [id]);
+    return r.isEmpty ? null : Goal.fromRow(r.first);
+  }
+
   Future<int> addGoal({
     required String name,
     required int targetMinor,

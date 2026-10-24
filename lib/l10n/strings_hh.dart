@@ -1,7 +1,36 @@
 part of 'strings.dart';
 
-/// The shared budget's texts (lib/household/, lib/ui/household_screen.dart): [ru, en, zh, kk, de, nl].
+/// The shared budget's texts (lib/household/, lib/ui/household_screen.dart) and later additions
+/// in all six languages at once: [ru, en, zh, kk, de, nl].
 const _hh = <String, List<String>>{
+  // --- Closing a goal with a purchase (lib/ui/goal_spend.dart) ---
+  'goal_close': ['Закрыть цель', 'Close a goal', '完成目标', 'Мақсатты жабу', 'Ziel abschließen', 'Doel afsluiten'],
+  'goal_from': ['Цель: {0}', 'Goal: {0}', '目标：{0}', 'Мақсат: {0}', 'Ziel: {0}', 'Doel: {0}'],
+  'goal_none': ['Целей пока нет.', 'There are no goals yet.', '还没有目标。', 'Әзірге мақсат жоқ.', 'Noch keine Ziele.', 'Nog geen doelen.'],
+  'goal_which': ['Какая цель', 'Which goal', '哪个目标', 'Қай мақсат', 'Welches Ziel', 'Welk doel'],
+  'goal_saved_of': ['Накоплено {0} из {1}', 'Saved {0} of {1}', '已存 {0} / {1}', '{1} ішінен {0} жиналды', '{0} von {1} gespart', '{0} van {1} gespaard'],
+  'goal_close_full': ['Полностью', 'Fully', '全部完成', 'Толық', 'Vollständig', 'Helemaal'],
+  'goal_close_full_sub': [
+    'Цель достигнута: покупка оплачена из накопленного, цель закрывается.',
+    'The goal is reached: the purchase is paid from the savings and the goal closes.',
+    '目标已达成：用存下的钱支付这笔消费，目标随即关闭。',
+    'Мақсатқа жеттіңіз: сатып алу жиналған ақшадан төленеді, мақсат жабылады.',
+    'Ziel erreicht: Der Kauf wird aus dem Ersparten bezahlt, das Ziel wird abgeschlossen.',
+    'Doel bereikt: de aankoop wordt uit het gespaarde betaald en het doel wordt afgesloten.',
+  ],
+  'goal_close_part': ['Частично', 'Partly', '部分使用', 'Ішінара', 'Teilweise', 'Gedeeltelijk'],
+  'goal_close_part_sub': [
+    'Из накопленного уходит только сумма этой покупки, цель остаётся.',
+    'Only this purchase\'s amount leaves the savings; the goal stays.',
+    '只从存款中扣除这笔消费的金额，目标保留。',
+    'Жинақтан тек осы сатып алу сомасы алынады, мақсат қалады.',
+    'Nur der Betrag dieses Kaufs geht vom Ersparten ab, das Ziel bleibt.',
+    'Alleen het bedrag van deze aankoop gaat van het gespaarde af; het doel blijft.',
+  ],
+  'goal_paid': ['из накоплений, не в лимите', 'from savings, not in the limit', '来自存款，不计入限额', 'жинақтан, лимитке кірмейді',
+      'aus dem Ersparten, nicht im Limit', 'uit spaargeld, niet in de limiet'],
+  'goal_paid_part': ['накоплений не хватило', 'the savings weren\'t enough', '存款不足', 'жинақ жетпеді', 'Erspartes reichte nicht', 'het spaargeld was niet genoeg'],
+
   'hh_title': ['Общий бюджет', 'Shared budget', '共同预算', 'Ортақ бюджет', 'Gemeinsames Budget', 'Gedeeld budget'],
   'hh_tile_sub': ['Бюджет на двоих через общую папку', 'A budget for two through a shared folder', '通过共享文件夹的两人预算',
       'Ортақ қалта арқылы екі адамның бюджеті', 'Ein Budget zu zweit über einen geteilten Ordner', 'Een budget voor twee via een gedeelde map'],

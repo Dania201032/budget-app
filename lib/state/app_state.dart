@@ -122,6 +122,9 @@ class AppState extends ChangeNotifier {
   int commonBudget(DateTime m) => budgetEnabled ? _budgets[DateTime(m.year, m.month)] ?? 0 : 0;
   Map<int, int> balances = {};
   List<Goal> goals = [];
+
+  /// Names of all goals, closed ones too: purchases paid from a goal show it.
+  Map<int, String> goalNames = {};
   List<Debt> openDebts = [];
 
   /// Regular payments and incomes, soonest first.
@@ -324,6 +327,7 @@ class AppState extends ChangeNotifier {
     categories = await repo.categories();
     accounts = await repo.accounts();
     goals = await repo.goals();
+    goalNames = await repo.goalNames();
     await _reloadAll(notify: false);
     loaded = true;
     await _takePendingAction();
@@ -631,6 +635,11 @@ class AppState extends ChangeNotifier {
 
   /// Quick categorization from the review list; also teaches the merchant rule.
   Future<void> categorize(Txn t, Category c) async {
+    // A purchase paid from a goal that turns out to be ordinary spending: the money goes back.
+    if (t.goalId != null) {
+      await returnToGoal(t);
+      t = await repo.txnById(t.id!) ?? t;
+    }
     await saveTxn(t.copyWith(categoryId: () => c.id, kind: c.kind, needsReview: t.amountMinor == 0));
   }
 
@@ -888,8 +897,43 @@ class AppState extends ChangeNotifier {
     await _goalsChanged();
   }
 
+  /// "Close a goal": [t] is paid from [g]'s savings. Its amount (at most what was saved) leaves
+  /// the goal; covered by the savings, the purchase is not spending of the month's budget (the
+  /// money was set aside before). [close]: the goal is reached and closed.
+  Future<void> spendFromGoal(Txn t, Goal g, {required bool close}) async {
+    if (t.goalId != null && t.goalId != g.id) await returnToGoal(t);
+    final inGoal = rates.convert(t.amountMinor, t.currency, g.currency, t.time) ?? t.amountMinor;
+    final fresh = await repo.goalById(g.id) ?? g;
+    final taken = t.goalId == g.id ? 0 : inGoal.clamp(0, fresh.savedMinor);
+    if (taken > 0) await repo.addToGoal(g.id, -taken);
+    await repo.updateTxn(t.copyWith(
+      goalId: () => g.id,
+      categoryId: () => null,
+      excluded: taken >= inGoal || t.goalId == g.id,
+      needsReview: false,
+      merchant: () => t.merchant ?? g.name,
+    ));
+    if (close) await repo.archiveGoal(g.id);
+    await _goalsChanged();
+  }
+
+  /// Undoes [spendFromGoal] when the purchase gets a category instead: the money goes back.
+  Future<void> returnToGoal(Txn t) async {
+    final id = t.goalId;
+    if (id == null) return;
+    final g = await repo.goalById(id);
+    if (g != null) {
+      final inGoal = rates.convert(t.amountMinor, t.currency, g.currency, t.time) ?? t.amountMinor;
+      if (t.excluded) await repo.addToGoal(id, inGoal);
+      await repo.unarchiveGoal(id);
+    }
+    await repo.updateTxn(t.copyWith(goalId: () => null, excluded: false));
+    await _goalsChanged();
+  }
+
   Future<void> _goalsChanged() async {
     goals = await repo.goals();
+    goalNames = await repo.goalNames();
     _changed();
     await _reloadAll();
     _updateRates();

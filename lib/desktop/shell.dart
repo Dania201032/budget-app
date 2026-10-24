@@ -539,7 +539,8 @@ class _Accounts extends StatelessWidget {
     String? rateLine;
     if (foreign.isNotEmpty) {
       final c = foreign.first;
-      final r = s.rates.convert(10000, s.baseCurrency, c, now);
+      // One unit (100 minor units) of the base currency.
+      final r = s.rates.convert(100, s.baseCurrency, c, now);
       if (r != null) rateLine = '1 ${s.baseCurrency} = ${formatAmount(r, pattern: '#,##0.00')} $c';
     }
     return Padding(

@@ -9,6 +9,7 @@ import '../domain/money.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
+import 'goal_spend.dart';
 import 'split_sheet.dart';
 
 /// [draft] pre-fills a new transaction (e.g. from a skipped bank notification).
@@ -55,6 +56,12 @@ class _TxnEditorState extends State<TxnEditor> {
   late DateTime _time;
   int? _categoryId;
   int? _accountId;
+
+  /// "Close a goal": the goal that paid for this purchase, and (when just chosen) whether it is
+  /// reached and closed.
+  int? _goalId;
+  bool _goalChosen = false;
+  bool _closeGoal = false;
   late bool _excluded;
   late bool _ownTransfer;
 
@@ -78,6 +85,7 @@ class _TxnEditorState extends State<TxnEditor> {
     _kind = t?.kind ?? TxnKind.expense;
     _time = t?.time ?? DateTime.now();
     _categoryId = t?.categoryId;
+    _goalId = t?.goalId;
     _accountId = t?.accountId ?? state.accounts.firstOrNull?.id;
     _excluded = t?.excluded ?? false;
     _ownTransfer = t?.ownTransfer ?? false;
@@ -176,6 +184,15 @@ class _TxnEditorState extends State<TxnEditor> {
       needsReview: _categoryId == null && base.isCaptured && !_ownTransfer,
     );
     final id = await state.saveTxn(txn, rememberMerchant: _remember);
+    final savedTxn = await state.repo.txnById(id);
+    if (savedTxn != null) {
+      final goal = _goalId == null ? null : state.goals.where((g) => g.id == _goalId).firstOrNull;
+      if (_goalChosen && goal != null) {
+        await state.spendFromGoal(savedTxn, goal, close: _closeGoal);
+      } else if (base.goalId != null && _goalId == null) {
+        await state.returnToGoal(savedTxn);
+      }
+    }
     if (!keepShare && base.isSplit) await state.removeSplit(txn);
     if (_ownTransfer != base.ownTransfer) {
       final saved = await state.repo.txnById(id);
@@ -465,7 +482,31 @@ class _TxnEditorState extends State<TxnEditor> {
                       name: state.categoryName(c),
                       color: Color(c.color),
                       selected: _categoryId == c.id,
-                      onTap: () => setState(() => _categoryId = _categoryId == c.id ? null : c.id),
+                      onTap: () => setState(() {
+                        _categoryId = _categoryId == c.id ? null : c.id;
+                        if (_categoryId != null) _goalId = null;
+                      }),
+                    ),
+                  // A purchase the savings of a goal paid for.
+                  if (_kind == TxnKind.expense && !_ownTransfer && (state.goals.isNotEmpty || _goalId != null))
+                    _CategoryCell(
+                      name: _goalId == null ? tr('goal_close') : tr('goal_from', [state.goalNames[_goalId] ?? '']),
+                      color: Ledger.accentOf(context),
+                      selected: _goalId != null,
+                      onTap: () async {
+                        if (_goalId != null) {
+                          setState(() => _goalId = null);
+                          return;
+                        }
+                        final r = await chooseGoalSpend(context, state);
+                        if (r == null || !mounted) return;
+                        setState(() {
+                          _goalId = r.$1.id;
+                          _closeGoal = r.$2;
+                          _goalChosen = true;
+                          _categoryId = null;
+                        });
+                      },
                     ),
                 ],
               ),

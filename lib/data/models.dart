@@ -135,6 +135,9 @@ class Txn {
   /// Shared budget: the person (uid) who recorded it, null before the budget was shared.
   final String? author;
 
+  /// Paid from the savings of this goal ("close a goal"): not spending of the month's budget.
+  final int? goalId;
+
   const Txn({
     this.id,
     required this.time,
@@ -153,6 +156,7 @@ class Txn {
     this.ownTransfer = false,
     this.pairId,
     this.author,
+    this.goalId,
   });
 
   /// Auto-captured from payment apps / bank notifications (not manual, not imported from a spreadsheet).
@@ -181,6 +185,7 @@ class Txn {
         ownTransfer: (r['own_transfer'] as int? ?? 0) == 1,
         pairId: r['pair_id'] as int?,
         author: r['author'] as String?,
+        goalId: r['goal_id'] as int?,
       );
 
   Map<String, Object?> toRow() => {
@@ -201,6 +206,7 @@ class Txn {
         'own_transfer': ownTransfer ? 1 : 0,
         'pair_id': pairId,
         'author': author,
+        'goal_id': goalId,
       };
 
   Txn copyWith({
@@ -219,6 +225,7 @@ class Txn {
     String? raw,
     bool? ownTransfer,
     int? Function()? pairId,
+    int? Function()? goalId,
   }) =>
       Txn(
         id: id,
@@ -238,6 +245,7 @@ class Txn {
         ownTransfer: ownTransfer ?? this.ownTransfer,
         pairId: pairId != null ? pairId() : this.pairId,
         author: author,
+        goalId: goalId != null ? goalId() : this.goalId,
       );
 }
 

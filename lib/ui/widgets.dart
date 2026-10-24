@@ -311,7 +311,12 @@ class TxnTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final isIncome = txn.kind == TxnKind.income;
 
-    final title = cat != null ? state.categoryName(cat) : (txn.merchant ?? tr('no_category'));
+    final goalName = txn.goalId == null ? null : state.goalNames[txn.goalId];
+    final title = cat != null
+        ? state.categoryName(cat)
+        : goalName != null
+            ? tr('goal_from', [goalName])
+            : (txn.merchant ?? tr('no_category'));
     final subtitleParts = [
       if (cat != null && txn.merchant != null) txn.merchant!,
       if (txn.note != null && txn.note!.isNotEmpty && txn.source == 'manual') txn.note!,
@@ -356,10 +361,15 @@ class TxnTile extends StatelessWidget {
             style: mono(
               size: 15,
               color: txn.excluded ? scheme.outline : (isIncome ? Ledger.goodOf(context) : null),
-            ).copyWith(decoration: txn.excluded && txn.source != 'goal' && !txn.ownTransfer ? TextDecoration.lineThrough : null),
+            ).copyWith(
+                decoration: txn.excluded && txn.source != 'goal' && !txn.ownTransfer && txn.goalId == null
+                    ? TextDecoration.lineThrough
+                    : null),
           ),
           if (txn.source == 'goal')
             Text(tr('goal_transfer', [txn.merchant ?? '']), style: small)
+          else if (txn.goalId != null)
+            Text(tr(txn.excluded ? 'goal_paid' : 'goal_paid_part'), style: small)
           else if (txn.ownTransfer)
             Text(tr('own_transfer_short'), style: small)
           else if (txn.excluded)

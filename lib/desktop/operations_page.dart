@@ -10,6 +10,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/data_screens.dart' show SheetImportScreen;
 import '../ui/ledger.dart';
+import '../ui/goal_spend.dart';
 import '../ui/split_sheet.dart';
 import '../ui/statement_import_screen.dart';
 import '../ui/txn_editor.dart';
@@ -296,6 +297,17 @@ class _OperationsPageState extends State<OperationsPage> {
             final c = await _pickCategory(context, s, t.kind);
             if (c != null) await s.categorize(t, c);
           }),
+          // A purchase the savings of a goal paid for.
+          if (t.kind == TxnKind.expense && !t.ownTransfer && (s.goals.isNotEmpty || t.goalId != null))
+            Pill(
+              t.goalId == null ? tr('goal_close') : tr('goal_from', [s.goalNames[t.goalId] ?? '']),
+              selected: t.goalId != null,
+              onTap: () async {
+                if (t.goalId != null) return s.returnToGoal(t);
+                final r = await chooseGoalSpend(context, s);
+                if (r != null) await s.spendFromGoal(t, r.$1, close: r.$2);
+              },
+            ),
         ]),
         const SizedBox(height: 14),
         ListenableBuilder(
@@ -600,7 +612,9 @@ class _Table extends StatelessWidget {
         (
           Align(
             alignment: Alignment.centerLeft,
-            child: cat == null
+            child: cat == null && t.goalId != null
+                ? Text(tr('goal_from', [s.goalNames[t.goalId] ?? '']), overflow: TextOverflow.ellipsis, style: sans(context, size: 13))
+                : cat == null
                 ? tagWarn(context, tr('d_to_review'))
                 : Row(mainAxisSize: MainAxisSize.min, children: [
                     Swatch(Color(cat.color)),
