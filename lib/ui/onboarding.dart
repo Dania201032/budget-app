@@ -11,9 +11,8 @@ import 'sync_screen.dart';
 /// Countries offered at the first start and in Settings, in this order.
 const countries = ['CN', 'RU', 'KZ', 'DE', 'NL'];
 const countryFlags = {'CN': '🇨🇳', 'RU': '🇷🇺', 'KZ': '🇰🇿', 'DE': '🇩🇪', 'NL': '🇳🇱'};
-const _countryDefaultLanguage = {'CN': 'zh', 'RU': 'ru', 'KZ': 'kk', 'DE': 'de', 'NL': 'nl'};
 
-/// First start: country -> language -> app lock offer -> short guide.
+/// First start: language -> country -> app lock offer -> short guide.
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key});
 
@@ -53,19 +52,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     return switch (_step) {
+      // The language first, with its title in every language, so anyone can read the start.
       0 => _ChoicePage(
+          title: tr('choose_language'),
+          subtitle: 'Language · Язык · 语言 · Тіл · Sprache · Taal',
+          options: [for (final e in languageNames.entries) (e.key, e.value)],
+          selected: _lang,
+          onSelect: _setLang,
+          onNext: () => setState(() => _step = 1),
+        ),
+      1 => _ChoicePage(
           title: tr('choose_country'),
           subtitle: tr('choose_country_sub'),
           options: [for (final c in countries) (c, '${countryFlags[c]}  ${tr('country_$c')}')],
           selected: _country,
-          onSelect: (c) => setState(() {
-            _country = c;
-            // Suggest the country's language unless the phone language is already supported.
-            if (!supportedLanguages.contains(WidgetsBinding.instance.platformDispatcher.locale.languageCode)) {
-              _setLang(_countryDefaultLanguage[c]!);
-            }
-          }),
-          onNext: () => setState(() => _step = 1),
+          onSelect: (c) => setState(() => _country = c),
+          onBack: () => setState(() => _step = 0),
+          onNext: () => setState(() => _step = 2),
           // The computer starts from the phone's data (sync); the phone from a backup file.
           footer: appIsDesktop
               ? TextButton.icon(
@@ -78,14 +81,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   label: Text(tr('have_backup')),
                   onPressed: () => restoreFromBackupFile(context),
                 ),
-        ),
-      1 => _ChoicePage(
-          title: tr('choose_language'),
-          options: [for (final e in languageNames.entries) (e.key, e.value)],
-          selected: _lang,
-          onSelect: _setLang,
-          onBack: () => setState(() => _step = 0),
-          onNext: () => setState(() => _step = 2),
         ),
       2 => _LockOfferPage(onBack: () => setState(() => _step = 1), onNext: () => setState(() => _step = 3)),
       _ => GuideScreen(onFinish: _finish),

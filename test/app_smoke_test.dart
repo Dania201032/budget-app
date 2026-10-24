@@ -89,7 +89,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('first start: country -> language -> guide -> app', (tester) async {
+  testWidgets('first start: language -> country -> guide -> app', (tester) async {
     tester.view.physicalSize = const Size(1080, 2392);
     tester.view.devicePixelRatio = 2.75;
     addTearDown(tester.view.reset);
@@ -98,13 +98,16 @@ void main() {
     await tester.pumpWidget(ChangeNotifierProvider.value(value: state, child: const BudgetApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text(tr('choose_country')), findsOneWidget);
-    await tester.tap(find.textContaining(tr('country_KZ')));
+    // The language comes first, its title readable in every language.
+    expect(find.text(tr('choose_language')), findsOneWidget);
+    expect(find.text('Language · Язык · 语言 · Тіл · Sprache · Taal'), findsOneWidget);
+    await tester.tap(find.text('Қазақша'));
     await tester.pumpAndSettle();
+    expect(currentLanguage, 'kk');
     await tester.tap(find.text(tr('next')));
     await tester.pumpAndSettle();
-    expect(find.text('Қазақша'), findsOneWidget);
-    await tester.tap(find.text('Қазақша'));
+    expect(find.text(tr('choose_country')), findsOneWidget);
+    await tester.tap(find.textContaining(tr('country_KZ')));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tr('next')));
     await tester.pumpAndSettle();
