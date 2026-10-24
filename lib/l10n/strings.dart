@@ -2,6 +2,13 @@
 /// Kazakh, Chinese, German and Dutch were written by the developer; have a native speaker review before release.
 library;
 
+part 'strings_desk.dart';
+part 'strings_desk_a.dart';
+part 'strings_desk_b.dart';
+part 'strings_desk_c.dart';
+part 'strings_desk_d.dart';
+part 'strings_desk_e.dart';
+part 'strings_desk_f.dart';
 part 'strings_eu.dart';
 
 const supportedLanguages = ['ru', 'en', 'zh', 'kk', 'de', 'nl'];
@@ -921,17 +928,23 @@ set currentLanguage(String lang) => _lang = supportedLanguages.contains(lang) ? 
 
 /// Translated string for [key] in the current language, with {0}, {1}… replaced by [args].
 String tr(String key, [List<Object?> args = const []]) {
-  final list = _s[key];
-  if (list == null) return key;
   final i = supportedLanguages.indexOf(_lang);
-  var s = i < list.length ? list[i] : (_deNl[key]?[i - list.length] ?? list[1]);
+  final desk = _desk[key];
+  final list = _s[key];
+  if (list == null && desk == null) return key;
+  var s = desk != null
+      ? desk[i < desk.length ? i : 1]
+      : i < list!.length
+          ? list[i]
+          : (_deNl[key]?[i - list.length] ?? list[1]);
   for (var i = 0; i < args.length; i++) {
     s = s.replaceAll('{$i}', '${args[i]}');
   }
   return s;
 }
 
-bool hasTr(String key) => _s.containsKey(key) && _deNl.containsKey(key);
+bool hasTr(String key) =>
+    (_desk[key]?.length ?? 0) == supportedLanguages.length || (_s.containsKey(key) && _deNl.containsKey(key));
 
 /// Locale for intl number/date formatting.
 String get intlLocale => _lang;

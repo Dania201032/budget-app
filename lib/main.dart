@@ -10,6 +10,8 @@ import 'capture/capture_service.dart';
 import 'data/database.dart';
 import 'data/rates.dart';
 import 'data/repository.dart';
+import 'desktop/first_run_page.dart';
+import 'desktop/shell.dart';
 import 'io/app_log.dart';
 import 'io/home_widgets.dart';
 import 'l10n/strings.dart';
@@ -83,19 +85,30 @@ class BudgetApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final lang = currentLanguage;
-    return MaterialApp(
-      // A new key rebuilds every screen when the language changes.
-      key: ValueKey(lang),
-      title: switch (lang) { 'zh' => '预算', 'ru' || 'kk' => 'Бюджет', _ => 'Budget' },
-      debugShowCheckedModeBanner: false,
-      theme: ledgerTheme(Brightness.light),
-      darkTheme: ledgerTheme(Brightness.dark),
-      locale: Locale(lang),
-      supportedLocales: [for (final l in supportedLanguages) Locale(l)],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: state.onboarded ? const Shell() : const OnboardingFlow(),
-      // The app lock covers every screen, dialogs included.
-      builder: (context, child) => LockGate(child: child ?? const SizedBox()),
+    // The computer has its own layout (sidebar, wide pages) and first-run setup.
+    return ValueListenableBuilder(
+      valueListenable: deskLook,
+      builder: (context, look, _) => MaterialApp(
+        // A new key rebuilds every screen when the language changes.
+        key: ValueKey(lang),
+        title: switch (lang) { 'zh' => '预算', 'ru' || 'kk' => 'Бюджет', _ => 'Budget' },
+        debugShowCheckedModeBanner: false,
+        theme: ledgerTheme(Brightness.light),
+        darkTheme: ledgerTheme(Brightness.dark),
+        themeMode: appIsDesktop ? look.$1 : ThemeMode.system,
+        locale: Locale(lang),
+        supportedLocales: [for (final l in supportedLanguages) Locale(l)],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: state.onboarded
+            ? (appIsDesktop ? const DesktopShell() : const Shell())
+            : (appIsDesktop ? const FirstRunPage() : const OnboardingFlow()),
+        // The app lock covers every screen, dialogs included.
+        builder: (context, child) {
+          final c = LockGate(child: child ?? const SizedBox());
+          if (!appIsDesktop || look.$2 == 1) return c;
+          return MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(look.$2)), child: c);
+        },
+      ),
     );
   }
 }

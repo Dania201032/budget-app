@@ -472,6 +472,34 @@ class AppState extends ChangeNotifier {
     await refresh();
   }
 
+  /// First start on the computer: the user's countries, main currency and banks. On a fresh
+  /// install the accounts are created from the chosen banks (name, currency, type) plus cash.
+  Future<void> completeDesktopSetup({
+    required String home,
+    required String base,
+    required List<(String, String, String)> accounts,
+    required String countriesJson,
+  }) async {
+    final fresh = !await repo.hasTransactions() && !onboarded;
+    await repo.setSetting('country', home);
+    await repo.setSetting('desk_countries', countriesJson);
+    country = home;
+    if (fresh) {
+      await repo.db.delete('accounts');
+      for (final (name, currency, type) in accounts) {
+        await repo.addAccount(name, currency, type);
+      }
+      await repo.addAccount(tr('acc_cash'), base, 'cash', key: 'cash');
+      await repo.setSetting('base_currency', base);
+    }
+    baseCurrency = await repo.setting('base_currency') ?? base;
+    await rates.load(baseCurrency);
+    await repo.setSetting('onboarded', '1');
+    onboarded = true;
+    _budgets.clear();
+    await refresh();
+  }
+
   Future<void> setCountry(String c) async {
     country = c;
     await repo.setSetting('country', c);
