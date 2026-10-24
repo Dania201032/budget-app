@@ -138,4 +138,44 @@ void main() {
     expect(find.textContaining('EUR'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('taxes calculator reacts to typing', (tester) async {
+    appIsDesktop = true;
+    currentLanguage = 'ru';
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final state = await makeState(tester);
+    await tester.pumpWidget(app(state, const DesktopShell()));
+    for (var i = 0; i < 300 && find.byType(DeskPage).evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await settle(tester);
+    final desk = tester.element(find.byType(DeskPage).first).read<DeskController>();
+    desk.go(DeskPages.taxes);
+    await settle(tester);
+    final label = tr('d_calc_gross_in', [tr('d_calc_month').toLowerCase(), '{c}']);
+    final field = find.byWidgetPredicate((w) => w is FieldBox && (w.label == label.replaceAll('{c}', 'CNY') || w.label == label.replaceAll('{c}', 'RUB')));
+    for (var i = 0; i < 20 && field.evaluate().isEmpty; i++) {
+      await tester.drag(find.descendant(of: find.byType(DeskPage), matching: find.byType(ListView)).first, const Offset(0, -500));
+      await settle(tester);
+    }
+    await settle(tester);
+    String texts() => tester.widgetList<Text>(find.byType(Text)).map((t) => t.data ?? '').join('|');
+    final before = texts();
+    await tester.enterText(find.descendant(of: field, matching: find.byType(TextField)), '1000000');
+    await settle(tester);
+    final after = texts();
+    expect(after == before, isFalse, reason: 'nothing changed after typing');
+    expect(find.text(tr('d_calc_enter')), findsNothing);
+    expect(find.text(tr('d_calc_steps')), findsOneWidget);
+    // Clear all brings the prompt back.
+    await tester.ensureVisible(find.text(tr('d_clear_all')).first);
+    await settle(tester);
+    await tester.tap(find.text(tr('d_clear_all')).first);
+    await settle(tester);
+    expect(find.text(tr('d_calc_enter')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

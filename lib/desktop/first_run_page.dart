@@ -81,7 +81,14 @@ class _FirstRunPageState extends State<FirstRunPage> {
   final banksOff = <String>{};
   final banksOn = <String>{};
   String q = '';
+  final search = TextEditingController();
   bool busy = false;
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -218,7 +225,13 @@ class _FirstRunPageState extends State<FirstRunPage> {
                     SizedBox(
                       width: 420,
                       child: TextField(
-                        decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: tr('d_find_country'), isDense: true),
+                        controller: search,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: clearIcon(search, () => setState(() => q = '')),
+                          hintText: tr('d_find_country'),
+                          isDense: true,
+                        ),
                         onChanged: (v) => setState(() => q = v),
                       ),
                     ),

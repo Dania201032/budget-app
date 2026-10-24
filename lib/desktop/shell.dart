@@ -575,6 +575,14 @@ class _Palette extends StatefulWidget {
 
 class _PaletteState extends State<_Palette> {
   String q = '';
+  final search = TextEditingController();
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = widget.actions.where((a) => a.$1.toLowerCase().contains(q.toLowerCase())).toList();
@@ -587,8 +595,13 @@ class _PaletteState extends State<_Palette> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
+              controller: search,
               autofocus: true,
-              decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: tr('d_find_or_do')),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: clearIcon(search, () => setState(() => q = '')),
+                hintText: tr('d_find_or_do'),
+              ),
               onChanged: (v) => setState(() => q = v),
               onSubmitted: (_) {
                 if (list.isNotEmpty) Navigator.pop(context, list.first.$3);

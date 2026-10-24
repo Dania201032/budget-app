@@ -450,6 +450,17 @@ class _HoldingDialogState extends State<_HoldingDialog> {
         ),
       ),
       actions: [
+        TextButton.icon(
+          icon: const Icon(Icons.backspace_outlined, size: 16),
+          label: Text(tr('d_clear_all')),
+          onPressed: () => setState(() {
+            for (final c in [name, where, amount, rate, received]) {
+              c.clear();
+            }
+            next = null;
+            maturity = null;
+          }),
+        ),
         if (widget.h != null) TextButton(onPressed: () => Navigator.pop(context, (null, true)), child: Text(tr('delete'))),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('cancel'))),
         FilledButton(

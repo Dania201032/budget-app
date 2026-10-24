@@ -298,6 +298,15 @@ class _ScenarioDialogState extends State<_ScenarioDialog> {
         ]),
       ),
       actions: [
+        TextButton.icon(
+          icon: const Icon(Icons.backspace_outlined, size: 16),
+          label: Text(tr('d_clear_all')),
+          onPressed: () => setState(() {
+            name.clear();
+            amount.clear();
+            months.clear();
+          }),
+        ),
         if (widget.sc != null) TextButton(onPressed: () => Navigator.pop(context, (null, true)), child: Text(tr('delete'))),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('cancel'))),
         FilledButton(
@@ -474,6 +483,11 @@ class _PlanState extends State<_Plan> {
         Text(how, style: sans(context, size: 12.5, color: usualTotal == 0 ? warnOf(context) : Ledger.mutedOf(context))),
         const SizedBox(height: 10),
         Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
+          ClearAllButton(onTap: () => setState(() {
+                for (final c in ctrl.values) {
+                  c.clear();
+                }
+              })),
           DeskButton(tr('d_like_last'), onTap: () => setState(() {
                 for (final c in cats) {
                   ctrl[c.id]!.text = formatAmount(d.spentByCategory[c.id]?[11] ?? 0, pattern: '0');

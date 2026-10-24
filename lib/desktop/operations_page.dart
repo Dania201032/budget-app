@@ -294,11 +294,17 @@ class _OperationsPageState extends State<OperationsPage> {
           }),
         ]),
         const SizedBox(height: 14),
-        TextField(
+        ListenableBuilder(
+          listenable: _note,
+          builder: (context, _) => TextField(
           controller: _note,
-          decoration: InputDecoration(labelText: tr('comment'), isDense: true),
+          decoration: InputDecoration(
+            labelText: tr('comment'),
+            isDense: true,
+            suffixIcon: clearIcon(_note, () => s.saveTxn(t.copyWith(note: () => null), rememberMerchant: false)),
+          ),
           onSubmitted: (v) => s.saveTxn(t.copyWith(note: () => v.trim().isEmpty ? null : v.trim()), rememberMerchant: false),
-        ),
+        )),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (t.kind == TxnKind.expense) DeskButton(tr('d_split'), small: true, onTap: () => showSplitSheet(context, t)),
@@ -425,13 +431,17 @@ class _FiltersState extends State<_Filters> {
       Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
         SizedBox(
           width: 340,
-          child: TextField(
-            controller: _q,
-            onChanged: widget.onQuery,
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon: const Icon(Icons.search, size: 18),
-              hintText: tr('d_search_hint'),
+          child: ListenableBuilder(
+            listenable: _q,
+            builder: (context, _) => TextField(
+              controller: _q,
+              onChanged: widget.onQuery,
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search, size: 18),
+                suffixIcon: clearIcon(_q, () => widget.onQuery('')),
+                hintText: tr('d_search_hint'),
+              ),
             ),
           ),
         ),

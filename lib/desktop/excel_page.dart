@@ -568,7 +568,13 @@ class _ExcelPageState extends State<ExcelPage> {
         DeskButton(tr('d_back'), icon: Icons.arrow_back, onTap: () => desk.go(DeskPages.documents)),
         SizedBox(
           width: 280,
-          child: TextField(controller: name, decoration: InputDecoration(isDense: true, labelText: tr('d_x_file_name'))),
+          child: ListenableBuilder(
+            listenable: name,
+            builder: (context, _) => TextField(
+              controller: name,
+              decoration: InputDecoration(isDense: true, labelText: tr('d_x_file_name'), suffixIcon: clearIcon(name)),
+            ),
+          ),
         ),
         DeskButton(tr('d_x_save'), primary: true, shortcut: 'Ctrl S', onTap: _save),
       ],

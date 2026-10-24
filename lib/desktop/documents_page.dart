@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../data/models.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
+import '../io/app_log.dart';
 import '../io/export.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
@@ -48,14 +49,24 @@ Future<void> openPath(String path) async {
 /// offers to open it. Returns the saved path, or null when the person cancelled.
 Future<String?> saveWithDialog(BuildContext context, DeskController desk, String fileName, List<int> bytes) async {
   final dir = await documentsDir(desk);
-  final uri = await appLock.whileInSystemScreen(() => FilePicker.saveFile(
-        fileName: fileName,
-        bytes: Uint8List.fromList(bytes),
-        dialogTitle: tr('d_save_as'),
-        initialDirectory: dir.path,
-      ));
-  if (uri == null) return null;
-  final path = uri.isScheme('file') ? uri.toFilePath(windows: Platform.isWindows) : uri.toString();
+  String path;
+  try {
+    // Owned by the app window, so the dialog never opens hidden behind it.
+    final uri = await appLock.whileInSystemScreen(() => FilePicker.saveFile(
+          fileName: fileName,
+          bytes: Uint8List.fromList(bytes),
+          dialogTitle: tr('d_save_as'),
+          initialDirectory: dir.path,
+          windowsOptions: const WindowsOptions(lockParentWindow: true),
+        ));
+    if (uri == null) return null;
+    path = uri.isScheme('file') ? uri.toFilePath(windows: Platform.isWindows) : uri.toString();
+  } catch (e) {
+    // No dialog on this system: save into the documents folder instead of losing the file.
+    AppLog.line('save dialog: $e');
+    path = '${dir.path}${Platform.pathSeparator}$fileName';
+    await File(path).writeAsBytes(bytes);
+  }
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       duration: const Duration(seconds: 8),

@@ -13,13 +13,6 @@ import '../ui/motion.dart';
 
 String compactNum(num v) => NumberFormat.compact(locale: intlLocale).format(v);
 
-TextStyle _tipStyle(BuildContext c) => TextStyle(
-      fontFamily: Ledger.monoFamily,
-      fontSize: 12,
-      height: 1.4,
-      color: Ledger.isDark(c) ? Ledger.ink : Ledger.paper,
-    );
-
 /// Starts with zeros and switches to the real values after the first frame, so fl_chart
 /// animates the growth (no motion when the system asks for none).
 mixin _GrowIn<T extends StatefulWidget> on State<T> {
@@ -70,6 +63,17 @@ class DeskLineChart extends StatefulWidget {
 }
 
 class _DeskLineChartState extends State<DeskLineChart> with _GrowIn {
+  int? hover;
+
+  /// The point the readout describes: the one under the mouse, else the last one with data.
+  int? get _shownIndex {
+    if (hover != null) return hover;
+    for (var i = widget.xLabels.length - 1; i >= 0; i--) {
+      if (widget.lines.any((l) => i < l.values.length && l.values[i] != null)) return i;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final all = [for (final l in widget.lines) ...l.values.whereType<double>(), for (final h in widget.hLines) h.$1];
@@ -78,97 +82,177 @@ class _DeskLineChartState extends State<DeskLineChart> with _GrowIn {
     final span = (maxV - minV).abs() < 1e-9 ? 1.0 : maxV - minV;
     final muted = Ledger.mutedOf(context);
     final small = TextStyle(fontFamily: Ledger.monoFamily, fontSize: 10.5, color: muted);
-    return SizedBox(
-      height: widget.height,
-      child: LineChart(
-        LineChartData(
-          minY: minV - (minV < 0 ? span * .06 : 0),
-          maxY: maxV + span * .08,
-          minX: 0,
-          maxX: math.max(1, widget.xLabels.length - 1).toDouble(),
-          gridData: FlGridData(
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (v) => FlLine(color: v == 0 ? Ledger.inkOf(context).withValues(alpha: .5) : Ledger.trackOf(context), strokeWidth: 1),
-          ),
-          borderData: FlBorderData(show: true, border: Border(bottom: BorderSide(color: Ledger.inkOf(context)))),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(),
-            rightTitles: const AxisTitles(),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 48,
-                getTitlesWidget: (v, m) => v == m.max || v == m.min && v != 0 ? const SizedBox.shrink() : Text(compactNum(v), style: small),
+    final at = _shownIndex;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ChartReadout(
+          active: hover != null,
+          title: at == null ? null : (widget.xTitle?.call(at) ?? (at < widget.xLabels.length ? widget.xLabels[at] : null)),
+          items: [
+            if (at != null)
+              for (final l in widget.lines)
+                if (at < l.values.length && l.values[at] != null) (l.color, l.label, widget.format(l.values[at]!)),
+          ],
+        ),
+        SizedBox(
+          height: widget.height,
+          child: LineChart(
+            LineChartData(
+              minY: minV - (minV < 0 ? span * .06 : 0),
+              maxY: maxV + span * .08,
+              minX: 0,
+              maxX: math.max(1, widget.xLabels.length - 1).toDouble(),
+              gridData: FlGridData(
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (v) => FlLine(color: v == 0 ? Ledger.inkOf(context).withValues(alpha: .5) : Ledger.trackOf(context), strokeWidth: 1),
               ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 22,
-                interval: 1,
-                getTitlesWidget: (v, m) {
-                  final i = v.round();
-                  if ((v - i).abs() > .01 || i < 0 || i >= widget.xLabels.length) return const SizedBox.shrink();
-                  if (i % widget.labelEvery != 0 && i != widget.xLabels.length - 1) return const SizedBox.shrink();
-                  return Padding(padding: const EdgeInsets.only(top: 4), child: Text(widget.xLabels[i], style: small));
-                },
+              borderData: FlBorderData(
+                show: true,
+                border: Border(bottom: BorderSide(color: Ledger.inkOf(context))),
               ),
-            ),
-          ),
-          extraLinesData: ExtraLinesData(horizontalLines: [
-            for (final (y, color, label) in widget.hLines)
-              HorizontalLine(
-                y: y,
-                color: color,
-                strokeWidth: 1.4,
-                dashArray: const [6, 5],
-                label: HorizontalLineLabel(
-                  show: label.isNotEmpty,
-                  alignment: Alignment.topLeft,
-                  style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 11, color: color),
-                  labelResolver: (_) => label,
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(),
+                rightTitles: const AxisTitles(),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 48,
+                    getTitlesWidget: (v, m) => v == m.max || v == m.min && v != 0 ? const SizedBox.shrink() : Text(compactNum(v), style: small),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    interval: 1,
+                    getTitlesWidget: (v, m) {
+                      final i = v.round();
+                      if ((v - i).abs() > .01 || i < 0 || i >= widget.xLabels.length) return const SizedBox.shrink();
+                      if (i % widget.labelEvery != 0 && i != widget.xLabels.length - 1) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(widget.xLabels[i], style: small),
+                      );
+                    },
+                  ),
                 ),
               ),
-          ]),
-          lineTouchData: LineTouchData(
-            touchCallback: (e, r) {
-              if (e is FlTapUpEvent && widget.onTap != null) {
-                final s = r?.lineBarSpots;
-                if (s != null && s.isNotEmpty) widget.onTap!(s.first.x.round());
-              }
-            },
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => Ledger.inkOf(context),
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipItems: (spots) => [
-                for (var k = 0; k < spots.length; k++)
-                  LineTooltipItem(
-                    '${k == 0 && widget.xTitle != null ? '${widget.xTitle!(spots[k].x.round())}\n' : ''}'
-                    '${widget.lines[spots[k].barIndex].label}: ${widget.format(spots[k].y)}',
-                    _tipStyle(context),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  for (final (y, color, label) in widget.hLines)
+                    HorizontalLine(
+                      y: y,
+                      color: color,
+                      strokeWidth: 1.4,
+                      dashArray: const [6, 5],
+                      label: HorizontalLineLabel(
+                        show: label.isNotEmpty,
+                        alignment: Alignment.topLeft,
+                        style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 11, color: color),
+                        labelResolver: (_) => label,
+                      ),
+                    ),
+                ],
+              ),
+              lineTouchData: LineTouchData(
+                touchCallback: (e, r) {
+                  final s = r?.lineBarSpots;
+                  final x = s == null || s.isEmpty ? null : s.first.x.round();
+                  if (e is FlTapUpEvent && x != null) widget.onTap?.call(x);
+                  final h = e.isInterestedForInteractions ? x : null;
+                  if (h != hover) setState(() => hover = h);
+                },
+                // The values go to the readout above the chart, so nothing covers the lines.
+                touchTooltipData: LineTouchTooltipData(getTooltipItems: (spots) => [for (final _ in spots) null]),
+                getTouchedSpotIndicator: (bar, idx) => [
+                  for (final _ in idx)
+                    TouchedSpotIndicatorData(
+                      FlLine(color: Ledger.mutedOf(context).withValues(alpha: .6), strokeWidth: 1, dashArray: const [3, 3]),
+                      FlDotData(
+                        getDotPainter: (spot, p, b, i) => FlDotCirclePainter(
+                          radius: 4,
+                          color: b.color ?? Ledger.inkOf(context),
+                          strokeWidth: 2,
+                          strokeColor: Theme.of(context).colorScheme.surface,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              lineBarsData: [
+                for (final l in widget.lines)
+                  LineChartBarData(
+                    spots: [for (var i = 0; i < l.values.length; i++) l.values[i] == null ? FlSpot.nullSpot : FlSpot(i.toDouble(), grow(l.values[i]!))],
+                    color: l.color,
+                    barWidth: l.width,
+                    isStrokeCapRound: true,
+                    dashArray: l.dashed ? const [6, 5] : null,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(show: l.area, color: l.color.withValues(alpha: .12)),
                   ),
               ],
             ),
+            duration: motion(context, motionMedium * 2),
+            curve: motionCurve,
           ),
-          lineBarsData: [
-            for (final l in widget.lines)
-              LineChartBarData(
-                spots: [
-                  for (var i = 0; i < l.values.length; i++)
-                    l.values[i] == null ? FlSpot.nullSpot : FlSpot(i.toDouble(), grow(l.values[i]!)),
+        ),
+      ],
+    );
+  }
+}
+
+/// A one-line legend above a chart that shows the values under the mouse (or the latest ones,
+/// greyed), instead of a tooltip that covers the chart.
+class ChartReadout extends StatelessWidget {
+  final String? title;
+  final List<(Color?, String, String)> items;
+  final bool active;
+  const ChartReadout({super.key, this.title, this.items = const [], this.active = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = active ? Ledger.inkOf(context) : Ledger.mutedOf(context);
+    return AnimatedOpacity(
+      opacity: active ? 1 : .8,
+      duration: motion(context, motionShort),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 30),
+        padding: const EdgeInsets.only(bottom: 8),
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: 14,
+          runSpacing: 2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (title != null && title!.isNotEmpty)
+              Text(
+                title!,
+                style: TextStyle(fontFamily: Ledger.sansFamily, fontSize: 12.5, fontWeight: FontWeight.w600, color: ink),
+              ),
+            for (final (color, label, value) in items)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (color != null)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(right: 5),
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                  Text(
+                    '$label ',
+                    style: TextStyle(fontFamily: Ledger.sansFamily, fontSize: 12.5, color: Ledger.mutedOf(context)),
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 12.5, fontWeight: FontWeight.w600, color: ink),
+                  ),
                 ],
-                color: l.color,
-                barWidth: l.width,
-                isStrokeCapRound: true,
-                dashArray: l.dashed ? const [6, 5] : null,
-                dotData: const FlDotData(show: false),
-                belowBarData: BarAreaData(show: l.area, color: l.color.withValues(alpha: .12)),
               ),
           ],
         ),
-        duration: motion(context, motionMedium * 2),
-        curve: motionCurve,
       ),
     );
   }
@@ -212,110 +296,130 @@ class _DeskBarChartState extends State<DeskBarChart> with _GrowIn {
 
   @override
   Widget build(BuildContext context) {
-    final totals = [for (final g in widget.groups) for (final r in g) r.total, for (final h in widget.hLines) h.$1];
+    final totals = [
+      for (final g in widget.groups)
+        for (final r in g) r.total,
+      for (final h in widget.hLines) h.$1,
+    ];
     final maxV = totals.isEmpty ? 1.0 : math.max(1.0, totals.reduce(math.max));
     final minV = totals.isEmpty ? 0.0 : math.min(0.0, totals.reduce(math.min));
     final muted = Ledger.mutedOf(context);
     final small = TextStyle(fontFamily: Ledger.monoFamily, fontSize: 10.5, color: muted);
-    return SizedBox(
-      height: widget.height,
-      child: BarChart(
-        BarChartData(
-          maxY: maxV * 1.1,
-          minY: minV * 1.1,
-          alignment: BarChartAlignment.spaceAround,
-          gridData: FlGridData(
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (v) => FlLine(color: Ledger.trackOf(context), strokeWidth: 1),
-          ),
-          borderData: FlBorderData(show: true, border: Border(bottom: BorderSide(color: Ledger.inkOf(context)))),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(),
-            rightTitles: const AxisTitles(),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 48,
-                getTitlesWidget: (v, m) => v == m.max ? const SizedBox.shrink() : Text(compactNum(v), style: small),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 22,
-                getTitlesWidget: (v, m) {
-                  final i = v.round();
-                  if (i < 0 || i >= widget.xLabels.length) return const SizedBox.shrink();
-                  if (i % widget.labelEvery != 0) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(widget.xLabels[i], style: small.copyWith(color: hover == i ? Ledger.inkOf(context) : muted)),
-                  );
-                },
-              ),
-            ),
-          ),
-          extraLinesData: ExtraLinesData(horizontalLines: [
-            for (final (y, color, label) in widget.hLines)
-              HorizontalLine(
-                y: y,
-                color: color,
-                strokeWidth: 1.4,
-                dashArray: const [6, 5],
-                label: HorizontalLineLabel(
-                  show: label.isNotEmpty,
-                  alignment: Alignment.topLeft,
-                  style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 11, color: color),
-                  labelResolver: (_) => label,
-                ),
-              ),
-          ]),
-          barTouchData: BarTouchData(
-            touchCallback: (e, r) {
-              final g = r?.spot?.touchedBarGroupIndex;
-              if (e is FlTapUpEvent && g != null) widget.onTap?.call(g);
-              final h = e.isInterestedForInteractions ? g : null;
-              if (h != hover) setState(() => hover = h);
-            },
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => Ledger.inkOf(context),
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipItem: (group, gi, rod, ri) => ri == 0 ? BarTooltipItem(widget.tooltip(gi), _tipStyle(context)) : null,
-            ),
-          ),
-          barGroups: [
-            for (var i = 0; i < widget.groups.length; i++)
-              BarChartGroupData(
-                x: i,
-                barsSpace: 3,
-                barRods: [
-                  for (final r in widget.groups[i])
-                    () {
-                      final dim = hover != null && hover != i;
-                      var from = 0.0;
-                      final items = <BarChartRodStackItem>[];
-                      for (final (v, c) in r.parts) {
-                        final to = from + grow(v);
-                        items.add(BarChartRodStackItem(from, to, dim ? c.withValues(alpha: .45) : c));
-                        from = to;
-                      }
-                      return BarChartRodData(
-                        toY: grow(r.total),
-                        width: widget.rodWidth,
-                        color: r.outline != null ? r.outline!.withValues(alpha: dim ? .1 : .2) : (r.parts.isEmpty ? Colors.transparent : r.parts.first.$2),
-                        borderSide: r.outline == null ? BorderSide.none : BorderSide(color: r.outline!, width: 1.5),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                        rodStackItems: r.outline == null && r.parts.length > 1 ? items : const [],
-                      );
-                    }(),
-                ],
-              ),
+    // The readout shows the group under the mouse, else the last group that has bars.
+    var at = hover;
+    for (var g = widget.groups.length - 1; at == null && g >= 0; g--) {
+      if (widget.groups[g].any((r) => r.total != 0)) at = g;
+    }
+    final lines = at == null ? const <String>[] : widget.tooltip(at).split('\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ChartReadout(
+          active: hover != null,
+          title: lines.isEmpty ? null : lines.first,
+          items: [
+            for (final l in lines.skip(1))
+              if (l.contains(': ')) (null, '${l.substring(0, l.indexOf(': '))}:', l.substring(l.indexOf(': ') + 2)) else (null, l, ''),
           ],
         ),
-        duration: motion(context, motionMedium * 2),
-        curve: motionCurve,
-      ),
+        SizedBox(
+          height: widget.height,
+          child: BarChart(
+            BarChartData(
+              maxY: maxV * 1.1,
+              minY: minV * 1.1,
+              alignment: BarChartAlignment.spaceAround,
+              gridData: FlGridData(drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: Ledger.trackOf(context), strokeWidth: 1)),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(bottom: BorderSide(color: Ledger.inkOf(context))),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(),
+                rightTitles: const AxisTitles(),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 48,
+                    getTitlesWidget: (v, m) => v == m.max ? const SizedBox.shrink() : Text(compactNum(v), style: small),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    getTitlesWidget: (v, m) {
+                      final i = v.round();
+                      if (i < 0 || i >= widget.xLabels.length) return const SizedBox.shrink();
+                      if (i % widget.labelEvery != 0) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(widget.xLabels[i], style: small.copyWith(color: hover == i ? Ledger.inkOf(context) : muted)),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  for (final (y, color, label) in widget.hLines)
+                    HorizontalLine(
+                      y: y,
+                      color: color,
+                      strokeWidth: 1.4,
+                      dashArray: const [6, 5],
+                      label: HorizontalLineLabel(
+                        show: label.isNotEmpty,
+                        alignment: Alignment.topLeft,
+                        style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 11, color: color),
+                        labelResolver: (_) => label,
+                      ),
+                    ),
+                ],
+              ),
+              barTouchData: BarTouchData(
+                touchCallback: (e, r) {
+                  final g = r?.spot?.touchedBarGroupIndex;
+                  if (e is FlTapUpEvent && g != null) widget.onTap?.call(g);
+                  final h = e.isInterestedForInteractions ? g : null;
+                  if (h != hover) setState(() => hover = h);
+                },
+                touchTooltipData: BarTouchTooltipData(getTooltipItem: (group, gi, rod, ri) => null),
+              ),
+              barGroups: [
+                for (var i = 0; i < widget.groups.length; i++)
+                  BarChartGroupData(
+                    x: i,
+                    barsSpace: 3,
+                    barRods: [
+                      for (final r in widget.groups[i])
+                        () {
+                          final dim = hover != null && hover != i;
+                          var from = 0.0;
+                          final items = <BarChartRodStackItem>[];
+                          for (final (v, c) in r.parts) {
+                            final to = from + grow(v);
+                            items.add(BarChartRodStackItem(from, to, dim ? c.withValues(alpha: .45) : c));
+                            from = to;
+                          }
+                          return BarChartRodData(
+                            toY: grow(r.total),
+                            width: widget.rodWidth,
+                            color: r.outline != null ? r.outline!.withValues(alpha: dim ? .1 : .2) : (r.parts.isEmpty ? Colors.transparent : r.parts.first.$2),
+                            borderSide: r.outline == null ? BorderSide.none : BorderSide(color: r.outline!, width: 1.5),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                            rodStackItems: r.outline == null && r.parts.length > 1 ? items : const [],
+                          );
+                        }(),
+                    ],
+                  ),
+              ],
+            ),
+            duration: motion(context, motionMedium * 2),
+            curve: motionCurve,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -340,54 +444,69 @@ class _DeskDonutState extends State<DeskDonut> with _GrowIn {
     return SizedBox(
       width: widget.size,
       height: widget.size,
-      child: Stack(alignment: Alignment.center, children: [
-        AnimatedRotation(
-          turns: shown ? 0 : -.15,
-          duration: motion(context, motionMedium * 2),
-          curve: motionCurve,
-          child: AnimatedOpacity(
-            opacity: shown ? 1 : 0,
-            duration: motion(context, motionMedium),
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: widget.size * .3,
-                startDegreeOffset: -90,
-                pieTouchData: PieTouchData(touchCallback: (e, r) {
-                  final i = e.isInterestedForInteractions ? r?.touchedSection?.touchedSectionIndex : null;
-                  if (e is FlTapUpEvent && i != null && i >= 0) widget.onTap?.call(i);
-                  if (i != touched) setState(() => touched = i == null || i < 0 ? null : i);
-                }),
-                sections: [
-                  for (var i = 0; i < widget.slices.length; i++)
-                    PieChartSectionData(
-                      value: math.max(widget.slices[i].$2, total * .002),
-                      color: widget.slices[i].$3,
-                      radius: touched == i ? widget.size * .17 : widget.size * .14,
-                      showTitle: false,
-                    ),
-                ],
-              ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedRotation(
+            turns: shown ? 0 : -.15,
+            duration: motion(context, motionMedium * 2),
+            curve: motionCurve,
+            child: AnimatedOpacity(
+              opacity: shown ? 1 : 0,
               duration: motion(context, motionMedium),
-              curve: motionCurve,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 2,
+                  centerSpaceRadius: widget.size * .3,
+                  startDegreeOffset: -90,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (e, r) {
+                      final i = e.isInterestedForInteractions ? r?.touchedSection?.touchedSectionIndex : null;
+                      if (e is FlTapUpEvent && i != null && i >= 0) widget.onTap?.call(i);
+                      if (i != touched) setState(() => touched = i == null || i < 0 ? null : i);
+                    },
+                  ),
+                  sections: [
+                    for (var i = 0; i < widget.slices.length; i++)
+                      PieChartSectionData(
+                        value: math.max(widget.slices[i].$2, total * .002),
+                        color: widget.slices[i].$3,
+                        radius: touched == i ? widget.size * .17 : widget.size * .14,
+                        showTitle: false,
+                      ),
+                  ],
+                ),
+                duration: motion(context, motionMedium),
+                curve: motionCurve,
+              ),
             ),
           ),
-        ),
-        Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: widget.size * .5,
-            child: Text(t?.$1 ?? tr('d_total'),
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: Ledger.sansFamily, fontSize: 12, color: Ledger.mutedOf(context))),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: widget.size * .5,
+                child: Text(
+                  t?.$1 ?? tr('d_total'),
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: Ledger.sansFamily, fontSize: 12, color: Ledger.mutedOf(context)),
+                ),
+              ),
+              Text(
+                widget.format(t?.$2 ?? total),
+                style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 15, fontWeight: FontWeight.w600, color: Ledger.inkOf(context)),
+              ),
+              if (t != null && total > 0)
+                Text(
+                  '${(t.$2 / total * 100).round()}%',
+                  style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 12, color: Ledger.mutedOf(context)),
+                ),
+            ],
           ),
-          Text(widget.format(t?.$2 ?? total),
-              style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 15, fontWeight: FontWeight.w600, color: Ledger.inkOf(context))),
-          if (t != null && total > 0)
-            Text('${(t.$2 / total * 100).round()}%', style: TextStyle(fontFamily: Ledger.monoFamily, fontSize: 12, color: Ledger.mutedOf(context))),
-        ]),
-      ]),
+        ],
+      ),
     );
   }
 }

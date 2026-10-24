@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/strings.dart';
 import '../ui/ledger.dart';
 
 /// Shared pieces of the computer version, in the ledger look: paper, ink, emerald, hairlines.
@@ -556,19 +557,50 @@ class FieldBox extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: sans(context, size: 12, color: Ledger.mutedOf(context))),
         const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          onChanged: onChanged,
-          keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-          style: mono(size: 14),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: hint,
-            suffixText: suffix,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) => TextField(
+            controller: controller,
+            onChanged: onChanged,
+            keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            style: mono(size: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hint,
+              suffixText: suffix,
+              suffixIcon: clearIcon(controller, () => onChanged?.call('')),
+              suffixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            ),
           ),
         ),
       ]);
+}
+
+/// A small × inside a filled field that empties it; null (no icon) while the field is empty.
+/// Use inside a ListenableBuilder on [c] so it appears as soon as something is typed.
+Widget? clearIcon(TextEditingController c, [VoidCallback? cleared]) => c.text.isEmpty
+    ? null
+    : IconButton(
+        tooltip: tr('d_clear'),
+        visualDensity: VisualDensity.compact,
+        iconSize: 16,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        icon: const Icon(Icons.close),
+        onPressed: () {
+          c.clear();
+          cleared?.call();
+        },
+      );
+
+/// "Clear all" for a form with several fields.
+class ClearAllButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool small;
+  const ClearAllButton({super.key, required this.onTap, this.small = false});
+  @override
+  Widget build(BuildContext context) => DeskButton(tr('d_clear_all'), icon: Icons.backspace_outlined, small: small, onTap: onTap);
 }
 
 /// Parses "1 234,5" / "1,234.5" / "12" as a number (null when empty or not a number).

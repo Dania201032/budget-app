@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,7 +11,7 @@ import '../domain/money.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
-import 'documents_page.dart' show saveWithDialog;
+import 'documents_page.dart' show documentsDir, openPath, saveWithDialog;
 import 'charts.dart';
 import 'kit.dart';
 import 'profile.dart';
@@ -28,17 +29,6 @@ class TaxesPage extends StatefulWidget {
 class _TaxesPageState extends State<TaxesPage> {
   String? salaryCountry;
   bool nonResident = false;
-  String? calcCountry;
-  final calcIncome = TextEditingController();
-  final calcDeduct = TextEditingController();
-  bool calcResident = true;
-
-  @override
-  void dispose() {
-    calcIncome.dispose();
-    calcDeduct.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +39,27 @@ class _TaxesPageState extends State<TaxesPage> {
     // Only the countries chosen in Settings: the others are noise for this person.
     final withRules = [...mine.where(taxRules.containsKey)];
     final sal = _Salary.compute(s, desk.data, salaryCountry, mine);
-    final calc = withRules.contains(calcCountry) ? calcCountry : withRules.firstOrNull;
 
     return DeskPage(
       title: tr('d_taxes_title', [DateTime.now().year]),
       subtitle: tr('d_taxes_sub'),
       actions: [
-        DeskButton(tr('d_to_calendar'), icon: Icons.event_outlined, onTap: () => _exportIcs(context, desk)),
+        DeskButton(tr('d_to_calendar'), icon: Icons.event_outlined, onTap: () => _addToCalendar(context, desk, _Payments.items(desk, sal, nonResident))),
         DeskButton(tr('d_for_return'), primary: true, onTap: () => desk.go(DeskPages.documents)),
       ],
       children: [
         _Kpis(sal: sal, nonResident: nonResident),
-        _Residency(days: desk.data.daysByCountry, mine: mine),
+        if (withRules.isEmpty)
+          Panel(
+            title: tr('d_calculator'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(tr('d_calc_no_rules', [taxRules.keys.map(countryName).join(', ')]), style: sans(context, size: 13, color: Ledger.mutedOf(context), height: 1.45)),
+              const SizedBox(height: 10),
+              DeskButton(tr('d_open_settings'), onTap: () => desk.go(DeskPages.settings)),
+            ]),
+          )
+        else
+          _Calculator(countries: withRules, sal: sal),
         if (sal != null)
           _SalaryPanel(
             sal: sal,
@@ -71,34 +70,11 @@ class _TaxesPageState extends State<TaxesPage> {
           )
         else
           Panel(title: tr('d_salary_tax'), child: Text(tr('d_no_salary'), style: sans(context, color: Ledger.mutedOf(context)))),
+        _Payments(mine: mine, sal: sal, nonResident: nonResident),
+        _OtherTaxes(mine: mine),
         AutoGrid(minWidth: 300, children: [_InterestCard(mine: mine), _BrokerCard(mine: mine), _OtherIncomeCard(sal: sal)]),
         _VatPanel(mine: mine),
-        _OtherTaxes(mine: mine),
-        _Payments(mine: mine, sal: sal, nonResident: nonResident),
-        if (calc == null)
-          Panel(
-            title: tr('d_calculator'),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(tr('d_calc_no_rules', [taxRules.keys.map(countryName).join(', ')]), style: sans(context, size: 13, color: Ledger.mutedOf(context), height: 1.45)),
-              const SizedBox(height: 10),
-              DeskButton(tr('d_open_settings'), onTap: () => desk.go(DeskPages.settings)),
-            ]),
-          )
-        else
-        _Calculator(
-          country: calc,
-          countries: withRules,
-          income: calcIncome,
-          deduct: calcDeduct,
-          resident: calcResident,
-          prefill: sal != null && sal.country == calc ? sal.grossYear : null,
-          onCountry: (c) => setState(() {
-            calcCountry = c;
-            calcIncome.clear();
-          }),
-          onResident: (v) => setState(() => calcResident = v),
-          onChanged: () => setState(() {}),
-        ),
+        _Residency(days: desk.data.daysByCountry, mine: mine),
         Panel(
           color: Ledger.overOf(context),
           borderColor: Ledger.overOf(context),
@@ -108,19 +84,47 @@ class _TaxesPageState extends State<TaxesPage> {
       ],
     );
   }
+}
 
-  Future<void> _exportIcs(BuildContext context, DeskController desk) async {
-    final items = _Payments.items(desk, null, false);
-    final sb = StringBuffer('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Budget//Taxes//EN\r\n');
-    for (final i in items) {
-      final d = DateFormat('yyyyMMdd').format(i.date);
-      sb.write('BEGIN:VEVENT\r\nUID:${i.date.millisecondsSinceEpoch}-${i.what.hashCode}@budget\r\n'
-          'DTSTART;VALUE=DATE:$d\r\nSUMMARY:${i.what.replaceAll(',', '\\,')}\r\n'
-          'BEGIN:VALARM\r\nTRIGGER:-P14D\r\nACTION:DISPLAY\r\nDESCRIPTION:${i.what.replaceAll(',', '\\,')}\r\nEND:VALARM\r\nEND:VEVENT\r\n');
-    }
-    sb.write('END:VCALENDAR\r\n');
-    await saveWithDialog(context, desk, 'taxes-${DateTime.now().year}.ics', utf8.encode(sb.toString()));
+/// Tax dates as an iCalendar file: one all-day event each, with a reminder two weeks before.
+String _ics(List<_PayItem> items) {
+  String esc(String v) => v.replaceAll(r'\', r'\\').replaceAll(';', r'\;').replaceAll(',', r'\,').replaceAll('\n', r'\n');
+  final stamp = '${DateFormat('yyyyMMdd').format(DateTime.now().toUtc())}T${DateFormat('HHmmss').format(DateTime.now().toUtc())}Z';
+  final sb = StringBuffer('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Budget//Taxes//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n');
+  for (final i in items) {
+    final title = i.sum == null ? i.what : '${i.what} — ${i.sum}';
+    sb.write('BEGIN:VEVENT\r\n'
+        'UID:${DateFormat('yyyyMMdd').format(i.date)}-${i.what.hashCode.toUnsigned(32)}@budget\r\n'
+        'DTSTAMP:$stamp\r\n'
+        'DTSTART;VALUE=DATE:${DateFormat('yyyyMMdd').format(i.date)}\r\n'
+        'DTEND;VALUE=DATE:${DateFormat('yyyyMMdd').format(i.date.add(const Duration(days: 1)))}\r\n'
+        'SUMMARY:${esc(title)}\r\n'
+        'BEGIN:VALARM\r\nTRIGGER:-P14D\r\nACTION:DISPLAY\r\nDESCRIPTION:${esc(title)}\r\nEND:VALARM\r\n'
+        'END:VEVENT\r\n');
   }
+  sb.write('END:VCALENDAR\r\n');
+  return sb.toString();
+}
+
+/// Puts the dates into the computer's calendar: the .ics file is written to the documents folder
+/// and opened with the calendar program (Outlook, Calendar…), which offers to add the events.
+Future<void> _addToCalendar(BuildContext context, DeskController desk, List<_PayItem> items) async {
+  final messenger = ScaffoldMessenger.of(context);
+  if (items.isEmpty) {
+    messenger.showSnackBar(SnackBar(content: Text(tr('d_no_payments'))));
+    return;
+  }
+  final body = _ics(items);
+  final name = items.length == 1 ? 'tax-${DateFormat('yyyy-MM-dd').format(items.first.date)}.ics' : 'taxes-${DateTime.now().year}.ics';
+  final dir = await documentsDir(desk);
+  final f = File('${dir.path}${Platform.pathSeparator}$name');
+  await f.writeAsString(body, encoding: utf8);
+  await openPath(f.path);
+  messenger.showSnackBar(SnackBar(
+    duration: const Duration(seconds: 10),
+    content: Text(tr('d_cal_opened', [items.length, f.path])),
+    action: context.mounted ? SnackBarAction(label: tr('d_save_as'), onPressed: () => saveWithDialog(context, desk, name, utf8.encode(body))) : null,
+  ));
 }
 
 /// Salary tax worked out from the salary that arrived: net amounts by month, gross restored with
@@ -612,6 +616,18 @@ class _OtherTaxesState extends State<_OtherTaxes> {
           Row(children: [
             Expanded(child: Text(title, style: sans(context, size: 14.5, weight: FontWeight.w600))),
             Text(amount == 0 ? '—' : formatMoney((amount * 100).round(), cur), style: mono(size: 14, weight: FontWeight.w600)),
+            IconButton(
+              tooltip: tr('d_clear_all'),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.backspace_outlined, size: 17),
+              onPressed: () {
+                for (final e in ctrl.entries.where((e) => e.key.startsWith('$kind.'))) {
+                  e.value.clear();
+                  v.remove(e.key);
+                }
+                desk.saveProfile(refold: false);
+              },
+            ),
           ]),
           const SizedBox(height: 10),
           AutoGrid(minWidth: 130, spacing: 8, children: fields),
@@ -756,8 +772,9 @@ class _Payments extends StatelessWidget {
     return Panel(
       title: tr('d_payments'),
       subtitle: tr('d_payments_sub'),
+      trailing: list.isEmpty ? null : DeskButton(tr('d_all_to_calendar'), small: true, icon: Icons.event_outlined, onTap: () => _addToCalendar(context, desk, list)),
       child: Column(children: [
-        TableHead([(tr('d_when'), 3, false), (tr('d_what'), 8, false), (tr('col_amount'), 3, true), (tr('d_status'), 3, true)]),
+        TableHead([(tr('d_when'), 3, false), (tr('d_what'), 8, false), (tr('col_amount'), 3, true), (tr('d_status'), 3, true), ('', 1, true)]),
         if (list.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text(tr('d_no_payments'))),
         for (final i in list)
           TableLine([
@@ -776,97 +793,218 @@ class _Payments extends StatelessWidget {
               ),
               3
             ),
+            (
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: tr('d_to_calendar'),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.event_available_outlined, size: 18),
+                  onPressed: () => _addToCalendar(context, desk, [i]),
+                ),
+              ),
+              1
+            ),
           ]),
       ]),
     );
   }
 }
 
-class _Calculator extends StatelessWidget {
-  final String country;
+/// Income tax calculator, like the salary calculators people already know: an amount per month or
+/// per year, before tax or take-home; the result updates while typing and shows each step.
+class _Calculator extends StatefulWidget {
   final List<String> countries;
-  final TextEditingController income;
-  final TextEditingController deduct;
-  final bool resident;
-  final double? prefill;
-  final ValueChanged<String> onCountry;
-  final ValueChanged<bool> onResident;
-  final VoidCallback onChanged;
-  const _Calculator({
-    required this.country,
-    required this.countries,
-    required this.income,
-    required this.deduct,
-    required this.resident,
-    required this.prefill,
-    required this.onCountry,
-    required this.onResident,
-    required this.onChanged,
-  });
+  final _Salary? sal;
+  const _Calculator({required this.countries, required this.sal});
+  @override
+  State<_Calculator> createState() => _CalculatorState();
+}
+
+class _CalculatorState extends State<_Calculator> {
+  String? country;
+  final amount = TextEditingController();
+  final deduct = TextEditingController();
+  bool yearly = false;
+  bool gross = true;
+  bool resident = true;
+
+  @override
+  void dispose() {
+    amount.dispose();
+    deduct.dispose();
+    super.dispose();
+  }
+
+  void _clear() => setState(() {
+        amount.clear();
+        deduct.clear();
+        resident = true;
+      });
+
+  void _useSalary(_Salary sal) => setState(() {
+        country = sal.country;
+        gross = true;
+        yearly = true;
+        amount.text = NumberFormat('#,##0', intlLocale).format(sal.grossYear);
+      });
 
   @override
   Widget build(BuildContext context) {
-    final r = taxRules[country]!;
-    if (income.text.isEmpty && prefill != null) income.text = NumberFormat('#,##0', intlLocale).format(prefill);
-    final x = parseNum(income.text) ?? 0;
+    final c = widget.countries.contains(country) ? country! : widget.countries.first;
+    final r = taxRules[c]!;
+    final x = parseNum(amount.text);
     final ded = parseNum(deduct.text) ?? 0;
-    final (t, marg) = r.tax(x, resident: resident, extraDeductions: ded);
+    final flat = !resident && r.nonResidentRate != null;
+    double taxOf(double g) => r.tax(g, resident: resident, extraDeductions: ded).$1;
+    double? grossYear;
+    if (x != null && x > 0) {
+      final entered = yearly ? x : x * 12;
+      if (gross) {
+        grossYear = entered;
+      } else {
+        // Take-home given: find the income before tax that leaves exactly this much.
+        var lo = entered, hi = entered * 3 + 1;
+        for (var i = 0; i < 60; i++) {
+          final mid = (lo + hi) / 2;
+          mid - taxOf(mid) < entered ? lo = mid : hi = mid;
+        }
+        grossYear = (lo + hi) / 2;
+      }
+    }
+    final (t, marg) = grossYear == null ? (0.0, 0.0) : r.tax(grossYear, resident: resident, extraDeductions: ded);
+    final net = (grossYear ?? 0) - t;
     String money(num v) => formatMoney((v * 100).round(), r.currency);
+    String pct(double v) => '${NumberFormat('0.##', intlLocale).format(v * 100)}%';
+    final muted = Ledger.mutedOf(context);
+    final mySalary = widget.sal != null && widget.sal!.country == c ? widget.sal : null;
+
+    final inputs = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Seg(options: [(false, tr('d_calc_month')), (true, tr('d_calc_year'))], value: yearly, onChanged: (v) => setState(() => yearly = v)),
+      const SizedBox(height: 8),
+      Seg(options: [(true, tr('d_before_tax')), (false, tr('d_take_home'))], value: gross, onChanged: (v) => setState(() => gross = v)),
+      const SizedBox(height: 12),
+      FieldBox(
+        tr(gross ? 'd_calc_gross_in' : 'd_calc_net_in', [yearly ? tr('d_calc_year').toLowerCase() : tr('d_calc_month').toLowerCase(), r.currency]),
+        amount,
+        hint: '0',
+        onChanged: (_) => setState(() {}),
+      ),
+      if (r.nonResidentRate != null) ...[
+        const SizedBox(height: 10),
+        Seg(options: [(true, tr('d_resident')), (false, tr('d_nonresident'))], value: resident, onChanged: (v) => setState(() => resident = v)),
+      ],
+      if (!r.linearZones && !flat) ...[
+        const SizedBox(height: 10),
+        FieldBox(r.country == 'CN' ? tr('d_special_deductions') : tr('d_deductions_year'), deduct, hint: '0', onChanged: (_) => setState(() {})),
+      ],
+      const SizedBox(height: 12),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        if (mySalary != null) DeskButton(tr('d_use_my_salary'), icon: Icons.download_outlined, onTap: () => _useSalary(mySalary)),
+        ClearAllButton(onTap: x == null && ded == 0 ? null : _clear),
+      ]),
+      const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: Text('${r.source} · ${tr('d_checked_on', [r.checked])}', style: sans(context, size: 12, color: muted))),
+        if (r.partial) tagWarn(context, tr('d_checked_partly')) else tagGood(context, tr('d_checked')),
+      ]),
+    ]);
+
+    Widget results;
+    if (grossYear == null) {
+      results = Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: Ledger.shadeOf(context), borderRadius: BorderRadius.circular(8)),
+        child: Column(children: [
+          Icon(Icons.calculate_outlined, size: 32, color: muted),
+          const SizedBox(height: 8),
+          Text(tr('d_calc_enter'), textAlign: TextAlign.center, style: sans(context, size: 13.5, color: muted, height: 1.45)),
+        ]),
+      );
+    } else {
+      final g = grossYear;
+      final base = r.taxableBase(g, extraDeductions: ded);
+      results = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Ledger.emerald, borderRadius: BorderRadius.circular(8)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(tr('d_tax_year'), style: sans(context, size: 12.5, color: const Color(0xFFCFE6DC))),
+            Text(money(t), style: mono(size: 28, weight: FontWeight.w600, color: Ledger.paper)),
+            Text(tr('d_calc_rates', [g == 0 ? '0%' : pct(t / g), pct(marg)]), style: sans(context, size: 12.5, color: const Color(0xFFCFE6DC))),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        TableHead([('', 4, false), (tr('d_calc_month'), 3, true), (tr('d_calc_year'), 3, true)]),
+        for (final (label, v, bold) in [(tr('d_before_tax'), g, false), (tr('d_calc_tax'), t, false), (tr('d_take_home'), net, true)])
+          TableLine([
+            (Text(label, style: sans(context, size: 13.5, weight: bold ? FontWeight.w600 : FontWeight.w400)), 4),
+            (numCell(context, money(v / 12), bold: bold), 3),
+            (numCell(context, money(v), bold: bold), 3),
+          ], padding: 4),
+        const SizedBox(height: 12),
+        // Where the money goes: take-home and tax as one bar.
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 12,
+            child: Row(children: [
+              Expanded(flex: math.max(1, (net / g * 1000).round()), child: Container(color: const Color(0xFF4F9E86))),
+              if (t > 0) Expanded(flex: math.max(1, (t / g * 1000).round()), child: Container(color: Ledger.inkOf(context))),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(spacing: 14, children: [
+          _dot(context, const Color(0xFF4F9E86), '${tr('d_take_home')} ${g == 0 ? '' : pct(net / g)}'),
+          _dot(context, Ledger.inkOf(context), '${tr('d_calc_tax')} ${g == 0 ? '' : pct(t / g)}'),
+        ]),
+        const SizedBox(height: 14),
+        Text(tr('d_calc_steps'), style: sans(context, size: 13, weight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        if (flat)
+          LineItem(tr('d_nonresident'), '${pct(r.nonResidentRate!)} × ${money(g)} = ${money(t)}')
+        else if (r.linearZones) ...[
+          for (var i = 0; i < r.brackets.length; i++) LineItem(_bracketLabel(r, i), pct(r.brackets[i].rate)),
+          Text(tr('d_linear_note'), style: sans(context, size: 12, color: muted)),
+        ] else ...[
+          Text(tr('d_calc_base', [money(g), money(r.allowance), money(ded), money(base)]), style: sans(context, size: 12.5, color: muted, height: 1.45)),
+          for (var i = 0, prev = 0.0; i < r.brackets.length; prev = r.brackets[i].upTo, i++)
+            () {
+              final inside = (math.min(base, r.brackets[i].upTo) - prev).clamp(0, double.infinity).toDouble();
+              final active = base > prev && (base <= r.brackets[i].upTo || !r.brackets[i].upTo.isFinite);
+              return LineItem(
+                _bracketLabel(r, i, ofBase: true),
+                inside == 0 ? pct(r.brackets[i].rate) : '${pct(r.brackets[i].rate)} × ${money(inside)} = ${money(inside * r.brackets[i].rate)}',
+                bold: active,
+                color: inside == 0 ? muted : null,
+              );
+            }(),
+        ],
+        const SizedBox(height: 6),
+        Text(tr('d_calc_note_${r.tier}'), style: sans(context, size: 12, color: muted)),
+      ]);
+    }
+
     return Panel(
       title: tr('d_calculator'),
-      trailing: Choice(options: [for (final c in countries) (c, countryName(c))], value: country, onChanged: onCountry, dense: true),
-      child: SplitRow([
-        (
-          1,
-          320,
-          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            FieldBox(tr('d_income_year_in', [r.currency]), income, onChanged: (_) => onChanged()),
-            if (r.nonResidentRate != null) ...[
-              const SizedBox(height: 10),
-              Seg(options: [(true, tr('d_resident')), (false, tr('d_nonresident'))], value: resident, onChanged: onResident),
-            ],
-            if (r.country == 'CN') ...[
-              const SizedBox(height: 10),
-              FieldBox(tr('d_special_deductions'), deduct, onChanged: (_) => onChanged()),
-            ],
-            const SizedBox(height: 12),
-            for (var i = 0; i < r.brackets.length; i++)
-              LineItem(
-                _bracketLabel(r, i),
-                '${NumberFormat('0.##', intlLocale).format(r.brackets[i].rate * 100)}%',
-              ),
-            const SizedBox(height: 6),
-            Row(children: [
-              Expanded(child: Text('${r.source} · ${tr('d_checked_on', [r.checked])}', style: sans(context, size: 12, color: Ledger.mutedOf(context)))),
-              if (r.partial) tagWarn(context, tr('d_checked_partly')) else tagGood(context, tr('d_checked')),
-            ]),
-          ])
-        ),
-        (
-          1,
-          280,
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: Ledger.shadeOf(context), borderRadius: BorderRadius.circular(8)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              LineItem(tr('d_tax_base'), money(r.taxableBase(x, extraDeductions: ded))),
-              LineItem(tr('d_tax_year'), money(t), bold: true),
-              LineItem(tr('d_effective'), x == 0 ? '0%' : '${(t / x * 100).toStringAsFixed(1)}%'),
-              LineItem(tr('d_marginal'), '${NumberFormat('0.#', intlLocale).format(marg * 100)}%'),
-              Divider(color: Ledger.ruleOf(context)),
-              LineItem(tr('d_left_in_hand'), money(x - t)),
-              const SizedBox(height: 6),
-              Text(tr('d_calc_note_${r.tier}'), style: sans(context, size: 12, color: Ledger.mutedOf(context))),
-            ]),
-          )
-        ),
-      ]),
+      subtitle: tr('d_calc_sub'),
+      trailing: widget.countries.length > 1
+          ? Choice(options: [for (final k in widget.countries) (k, countryName(k))], value: c, onChanged: (v) => setState(() => country = v), dense: true)
+          : Text(countryName(c), style: sans(context, size: 13, weight: FontWeight.w600)),
+      child: SplitRow([(1, 300, inputs), (1, 360, results)]),
     );
   }
 
+  Widget _dot(BuildContext c, Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Swatch(color, size: 10),
+        const SizedBox(width: 6),
+        Text(label, style: sans(c, size: 12.5)),
+      ]);
+
   /// "up to X", "X — Y", "above X", or "any income" for a single flat bracket.
-  static String _bracketLabel(TaxRules r, int i) {
-    String bound(int k) => NumberFormat.compact(locale: intlLocale).format(r.brackets[k].upTo + (r.linearZones ? 0 : r.allowance));
+  static String _bracketLabel(TaxRules r, int i, {bool ofBase = false}) {
+    String bound(int k) => NumberFormat.compact(locale: intlLocale).format(r.brackets[k].upTo + (r.linearZones || ofBase ? 0 : r.allowance));
     final last = !r.brackets[i].upTo.isFinite;
     if (i == 0) return last ? tr('d_any_income') : '${tr('d_up_to')} ${bound(0)}';
     return last ? '${tr('d_above')} ${bound(i - 1)}' : '${bound(i - 1)} — ${bound(i)}';
