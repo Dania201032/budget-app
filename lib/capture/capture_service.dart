@@ -223,6 +223,17 @@ class CaptureService {
     }
   }
 
+  /// The text in a picture shared to the app ("Share → Budget"), read on the phone; null if none.
+  Future<String?> readSharedImage(String uri) async {
+    try {
+      return await _channel.invokeMethod<String>('readSharedImage', {'uri': uri});
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
   /// What "Split…" on a notification asked to open, once.
   Future<Map<String, Object?>?> takePendingAction() async {
     try {

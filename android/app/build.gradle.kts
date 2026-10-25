@@ -79,5 +79,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     // Text of PDF bank statements (Sber, VTB), read on the phone.
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    // Text of a shared payment screenshot, read on the phone (Chinese and Latin script). The model
+    // comes through Google Play services (downloaded once, see the manifest): the APK stays small.
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1")
     testImplementation("junit:junit:4.13.2")
 }

@@ -25,4 +25,6 @@
     <string name="widget_pace">Қарқын</string>
     <string name="widget_income">Кіріс</string>
     <string name="widget_record">Жазу</string>
+    <!-- Quick Settings tile -->
+    <string name="tile_add">Шығын қосу</string>
 </resources>

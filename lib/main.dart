@@ -168,10 +168,26 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver, SingleTicker
   void _openPendingSplit() {
     final state = context.read<AppState>();
     _openPendingWidget(state);
+    _openPendingShare(state);
     final t = state.pendingSplit;
     if (t == null || !mounted) return;
     state.clearPendingSplit();
     showSplitSheet(context, t);
+  }
+
+  /// "Share → Budget": the editor with what the shared text says.
+  void _openPendingShare(AppState state) {
+    final g = state.pendingShare;
+    if (g == null || !mounted) return;
+    state.clearPendingShare();
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    _go(0);
+    if (g.amountMinor == null && g.note.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr(state.shareUnreadable ? 'share_ocr_failed' : 'share_nothing'))));
+      return;
+    }
+    openTxnEditor(context, draft: state.draftFrom(g));
   }
 
   void _openPendingWidget(AppState state) {

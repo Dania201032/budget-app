@@ -25,4 +25,6 @@
     <string name="widget_pace">Pace</string>
     <string name="widget_income">Income</string>
     <string name="widget_record">Add</string>
+    <!-- Quick Settings tile -->
+    <string name="tile_add">Add expense</string>
 </resources>

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 
 import '../capture/capture_service.dart';
+import '../capture/shared_text.dart';
 import '../data/models.dart';
 import '../data/rates.dart';
 import '../data/repository.dart';
@@ -206,6 +207,7 @@ class AppState extends ChangeNotifier {
     baseCurrency = await repo.setting('base_currency') ?? 'CNY';
     budgetEnabled = await repo.setting('budget_enabled') != '0';
     fixedDailyLimit = await repo.setting('daily_limit') == 'fixed';
+    eveningReminder = await repo.setting('evening_reminder') ?? '21:00';
     captureConsent = await repo.setting('capture_consent') != null;
     final staleUntil = DateTime.tryParse(await repo.setting('stale_hint_until') ?? '');
     staleHintHidden = staleUntil != null && staleUntil.isAfter(DateTime.now());
@@ -325,7 +327,10 @@ class AppState extends ChangeNotifier {
     // The other devices may have changed the shared budget's people and limits.
     await _loadHousehold();
     final imported = await _importer.importAll(await capture.consumeInbox());
-    if (imported > 0) _dirty = true;
+    if (imported > 0) {
+      _dirty = true;
+      _maybeQuietToday();
+    }
     // A hand-made "ВТБ" and the one automatic recording made for the same bank become one.
     if (await repo.mergeDuplicateBankAccounts() > 0) _dirty = true;
     await repo.removeAnsweredPrompts();
@@ -342,6 +347,14 @@ class AppState extends ChangeNotifier {
 
   Future<void> _takePendingAction() async {
     final a = await capture.takePendingAction();
+    // "Share → Budget": a text, or a screenshot whose text is read on the phone.
+    if (a != null && (a['type'] == 'share' || a['type'] == 'share_image')) {
+      final text = a['type'] == 'share' ? a['text'] as String? : await capture.readSharedImage(a['uri'] as String);
+      // A picture that couldn't be read (no Google Play services, the model not downloaded yet).
+      shareUnreadable = text == null && a['type'] == 'share_image';
+      pendingShare = parseSharedText(text ?? '');
+      return;
+    }
     if (a != null && a['type'] == 'widget') {
       final id = (a['categoryId'] as num?)?.toInt() ?? 0;
       pendingWidgetRoute = WidgetRoute(a['route'] as String? ?? 'home', id > 0 && categoryById.containsKey(id) ? id : null);
@@ -528,8 +541,13 @@ class AppState extends ChangeNotifier {
     return (b - goalReserve(m)).clamp(0, b);
   }
 
+  Future<bool> _hasRecordsSince(DateTime from) async =>
+      (await repo.db.query('transactions', columns: ['id'], where: 'ts >= ?', whereArgs: [from.millisecondsSinceEpoch], limit: 1))
+          .isNotEmpty;
+
   void _changed() {
     _dirty = true;
+    _maybeQuietToday();
     // The other device gets it within seconds, not at the next periodic look.
     _syncAfter(const Duration(seconds: 3));
   }
@@ -728,6 +746,25 @@ class AppState extends ChangeNotifier {
 
   void clearPendingSplit() => pendingSplit = null;
   void clearPendingWidgetRoute() => pendingWidgetRoute = null;
+
+  /// What was shared to the app, to open in the editor once.
+  SharedGuess? pendingShare;
+  bool shareUnreadable = false;
+  void clearPendingShare() => pendingShare = null;
+
+  /// A new operation from a shared text: an account in its currency, if there is one.
+  Txn draftFrom(SharedGuess g) {
+    final account = g.currency == null ? null : accounts.where((a) => a.currency == g.currency).firstOrNull;
+    return Txn(
+      time: DateTime.now(),
+      amountMinor: g.amountMinor ?? 0,
+      currency: g.currency ?? baseCurrency,
+      kind: g.kind,
+      merchant: g.merchant,
+      note: g.note.isEmpty ? null : g.note,
+      accountId: account?.id,
+    );
+  }
 
   // --- Budget & currency ---
 
@@ -1134,11 +1171,46 @@ class AppState extends ChangeNotifier {
     await syncReminders();
   }
 
-  /// Tells the phone when to remind: the due dates of the next 60 days, at 10:00.
+  /// The evening "nothing recorded today" reminder: "21:00", or "off".
+  String eveningReminder = '21:00';
+
+  Future<void> setEveningReminder(String v) async {
+    eveningReminder = v;
+    await repo.setSetting('evening_reminder', v);
+    await syncReminders();
+    notifyListeners();
+  }
+
+  /// The day already known to have records (no evening reminder that day).
+  DateTime? _quietDay;
+
+  /// After a record: the first one of the day takes today's evening reminder away.
+  void _maybeQuietToday() {
+    final now = DateTime.now();
+    if (_quietDay != DateTime(now.year, now.month, now.day)) unawaited(syncReminders());
+  }
+
+  /// Tells the phone when to remind: the due dates of the next 60 days, at 10:00, and the evening
+  /// reminder of the next two weeks (not today once something was recorded; the phone also drops
+  /// it when a payment is caught that day).
   Future<void> syncReminders() async {
     final now = DateTime.now();
     final until = DateTime(now.year, now.month, now.day + 60);
+    final today = DateTime(now.year, now.month, now.day);
+    final recordedToday = await _hasRecordsSince(today);
+    _quietDay = recordedToday ? today : null;
+    final evening = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(eveningReminder);
     await capture.setReminders([
+      if (evening != null)
+        for (var i = 0; i < 14; i++)
+          if (DateTime(now.year, now.month, now.day + i, int.parse(evening[1]!), int.parse(evening[2]!)) case final at
+              when at.isAfter(now) && !(i == 0 && recordedToday))
+            {
+              'ts': at.millisecondsSinceEpoch,
+              'title': tr('evening_title'),
+              'text': tr('evening_text'),
+              'idle': true,
+            },
       for (final r in recurring.where((r) => r.remind))
         for (final d in r.occurrences(until))
           if (DateTime(d.year, d.month, d.day, 10).isAfter(now))

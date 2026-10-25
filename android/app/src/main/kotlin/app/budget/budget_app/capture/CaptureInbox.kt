@@ -1,5 +1,6 @@
 package app.budget.budget_app.capture
 
+import app.budget.budget_app.Reminders
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -69,6 +70,7 @@ object CaptureInbox {
 
         File(ctx.filesDir, FILE_NAME).appendText(LocalCrypto.seal(p.toJson().toString()) + "\n")
         WidgetRefresh.afterCapture(ctx)
+        Reminders.noteActivity(ctx)
 
         val merged = if (match != null) {
             p.copy(merchant = p.merchant ?: match.payment.merchant, source = "${match.payment.source}+${p.source}")
@@ -94,6 +96,7 @@ object CaptureInbox {
         while (seenBillRows.size > 500) seenBillRows.remove(seenBillRows.first())
         File(ctx.filesDir, FILE_NAME).appendText(fresh.joinToString("") { LocalCrypto.seal(it.toJson().toString()) + "\n" })
         WidgetRefresh.afterCapture(ctx)
+        Reminders.noteActivity(ctx)
     }
 
     /** Raw append for WeChat transfer prompts and their answers (see [TransferPrompts]). */
@@ -101,6 +104,7 @@ object CaptureInbox {
     fun append(ctx: Context, p: CapturedPayment) {
         File(ctx.filesDir, FILE_NAME).appendText(LocalCrypto.seal(p.toJson().toString()) + "\n")
         WidgetRefresh.afterCapture(ctx)
+        Reminders.noteActivity(ctx)
     }
 
     @Synchronized

@@ -33,7 +33,33 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- "Share → Budget": an SMS or notification text, a payment screenshot (SharedInput.kt). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="image/*"/>
+            </intent-filter>
         </activity>
+        <!-- The screenshot text model of Google Play services, fetched when the app is installed. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr_chinese" />
+        <!-- "Add expense" in the Quick Settings panel. -->
+        <service
+            android:name=".widgets.QuickAddTile"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_add"
+            android:label="@string/tile_add"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
+            </intent-filter>
+        </service>
         <service
             android:name=".capture.PaymentAccessibilityService"
             android:exported="true"

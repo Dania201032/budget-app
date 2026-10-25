@@ -25,4 +25,6 @@
     <string name="widget_pace">Tempo</string>
     <string name="widget_income">Einnahmen</string>
     <string name="widget_record">Erfassen</string>
+    <!-- Quick Settings tile -->
+    <string name="tile_add">Ausgabe erfassen</string>
 </resources>

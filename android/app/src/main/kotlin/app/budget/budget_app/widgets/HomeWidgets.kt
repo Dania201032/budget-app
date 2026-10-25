@@ -156,11 +156,14 @@ object HomeWidgets {
         manager.updateAppWidget(id, views)
     }
 
+    /** Opens the app at [route] ("add", "analytics"…): widgets and the Quick Settings tile. */
+    fun routeIntent(ctx: Context, route: String): Intent = Intent(ctx, MainActivity::class.java)
+        .setAction("app.budget.widget.OPEN")
+        .putExtra(EXTRA_ROUTE, route)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
     private fun open(ctx: Context, widgetId: Int, zone: Int, route: String, categoryId: Long?): PendingIntent {
-        val intent = Intent(ctx, MainActivity::class.java)
-            .setAction("app.budget.widget.OPEN")
-            .putExtra(EXTRA_ROUTE, route)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val intent = routeIntent(ctx, route)
         if (categoryId != null) intent.putExtra(EXTRA_CATEGORY, categoryId)
         // The request code keeps every widget zone's intent distinct.
         return PendingIntent.getActivity(

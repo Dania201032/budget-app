@@ -18,6 +18,7 @@ import app.budget.budget_app.capture.BankLog
 import app.budget.budget_app.capture.CaptureInbox
 import app.budget.budget_app.capture.PaymentAccessibilityService
 import app.budget.budget_app.capture.PaymentNotificationListener
+import app.budget.budget_app.capture.SharedInput
 import app.budget.budget_app.capture.SplitActions
 import app.budget.budget_app.statements.PdfStatementText
 import app.budget.budget_app.widgets.HomeWidgets
@@ -43,7 +44,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        pendingAction = SplitActions.pendingFrom(intent) ?: HomeWidgets.actionFrom(intent)
+        pendingAction = SplitActions.pendingFrom(intent) ?: HomeWidgets.actionFrom(intent) ?: SharedInput.actionFrom(intent)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
         MethodChannel(messenger, "budget/capture").setMethodCallHandler { call, result ->
@@ -87,6 +88,9 @@ class MainActivity : FlutterFragmentActivity() {
                 "takePendingAction" -> {
                     result.success(pendingAction)
                     pendingAction = null
+                }
+                "readSharedImage" -> background(result) {
+                    SharedInput.readImage(this, Uri.parse(call.argument<String>("uri")!!))
                 }
                 else -> result.notImplemented()
             }
@@ -205,7 +209,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        (SplitActions.pendingFrom(intent) ?: HomeWidgets.actionFrom(intent))?.let { pendingAction = it }
+        (SplitActions.pendingFrom(intent) ?: HomeWidgets.actionFrom(intent) ?: SharedInput.actionFrom(intent))?.let { pendingAction = it }
     }
 
     @Deprecated("Deprecated in Java")

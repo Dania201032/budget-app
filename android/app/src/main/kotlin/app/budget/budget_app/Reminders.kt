@@ -12,14 +12,16 @@ import app.budget.budget_app.capture.CaptureInbox
 import org.json.JSONArray
 
 /**
- * Reminders of regular payments and incomes ("Rent 3 000 ¥ today"). The app sends the due times
- * of the next weeks ([set]); one inexact alarm at a time wakes [ReminderReceiver], which shows what
- * is due and arms the next one. Rebuilt after a reboot.
+ * Reminders of regular payments and incomes ("Rent 3 000 ¥ today") and the evening "nothing
+ * recorded today" one. The app sends the due times of the next weeks ([set]); one inexact alarm at
+ * a time wakes [ReminderReceiver], which shows what is due and arms the next one. Rebuilt after a
+ * reboot. An evening reminder (`idle`) is dropped when a payment was caught that day meanwhile.
  */
 object Reminders {
     private const val PREFS = "budget_reminders"
     private const val KEY_LIST = "list"
     private const val KEY_SHOWN = "shown_until"
+    private const val KEY_ACTIVE = "active_at"
     private const val CHANNEL = "reminders"
 
     fun set(ctx: Context, json: String) {
@@ -29,13 +31,25 @@ object Reminders {
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private data class Item(val ts: Long, val title: String, val text: String)
+    private data class Item(val ts: Long, val title: String, val text: String, val idle: Boolean)
+
+    /** A payment was caught now (the app was not necessarily open). */
+    fun noteActivity(ctx: Context) {
+        prefs(ctx).edit().putLong(KEY_ACTIVE, System.currentTimeMillis()).apply()
+    }
+
+    private fun sameDay(a: Long, b: Long): Boolean {
+        val ca = java.util.Calendar.getInstance().apply { timeInMillis = a }
+        val cb = java.util.Calendar.getInstance().apply { timeInMillis = b }
+        return ca.get(java.util.Calendar.YEAR) == cb.get(java.util.Calendar.YEAR) &&
+            ca.get(java.util.Calendar.DAY_OF_YEAR) == cb.get(java.util.Calendar.DAY_OF_YEAR)
+    }
 
     private fun items(ctx: Context): List<Item> = runCatching {
         val a = JSONArray(prefs(ctx).getString(KEY_LIST, "[]"))
         (0 until a.length()).map { i ->
             val o = a.getJSONObject(i)
-            Item(o.getLong("ts"), o.optString("title"), o.optString("text"))
+            Item(o.getLong("ts"), o.optString("title"), o.optString("text"), o.optBoolean("idle"))
         }
     }.getOrDefault(emptyList())
 
@@ -59,7 +73,9 @@ object Reminders {
     fun fire(ctx: Context) {
         val now = System.currentTimeMillis()
         val shown = prefs(ctx).getLong(KEY_SHOWN, 0)
-        val due = items(ctx).filter { it.ts in (shown + 1)..(now + 60_000) }
+        val active = prefs(ctx).getLong(KEY_ACTIVE, 0)
+        val dueAll = items(ctx).filter { it.ts in (shown + 1)..(now + 60_000) }
+        val due = dueAll.filter { !it.idle || !sameDay(active, it.ts) }
         if (due.isNotEmpty() && CaptureInbox.canNotify(ctx)) {
             val nm = ctx.getSystemService(NotificationManager::class.java)
             if (nm.getNotificationChannel(CHANNEL) == null) {
@@ -84,7 +100,7 @@ object Reminders {
                 )
             }
         }
-        if (due.isNotEmpty()) prefs(ctx).edit().putLong(KEY_SHOWN, due.maxOf { it.ts }).apply()
+        if (dueAll.isNotEmpty()) prefs(ctx).edit().putLong(KEY_SHOWN, dueAll.maxOf { it.ts }).apply()
         schedule(ctx)
     }
 }

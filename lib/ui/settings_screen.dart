@@ -92,6 +92,14 @@ class SettingsScreen extends StatelessWidget {
           valueColor: status.allOn ? good : bad,
           onTap: () => push(const CaptureSetupScreen()),
         ),
+        // The phone reminds; the computer has no notifications of its own.
+        if (!appIsDesktop)
+          LedgerTile(
+            tr('evening_setting'),
+            hint: tr('evening_setting_sub'),
+            value: state.eveningReminder == 'off' ? tr('lock_value_off') : state.eveningReminder,
+            onTap: () => _chooseEvening(context, state),
+          ),
         LedgerTile(tr('rates'), hint: tr('rates_sub'), onTap: () => push(const RatesScreen())),
         LedgerTile(
           tr('recurring'),
@@ -619,3 +627,31 @@ Future<void> _addWidgetSheet(BuildContext context) => showModalBottomSheet(
         ]),
       ),
     );
+
+/// The evening "nothing recorded today" reminder: a time, or off.
+Future<void> _chooseEvening(BuildContext context, AppState state) async {
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          child: Text(tr('evening_setting'), style: Theme.of(sheet).textTheme.titleMedium),
+        ),
+        ListTile(leading: const Icon(Icons.schedule), title: Text(tr('evening_pick_time')), onTap: () => Navigator.pop(sheet, 'time')),
+        ListTile(leading: const Icon(Icons.notifications_off_outlined), title: Text(tr('lock_value_off')), onTap: () => Navigator.pop(sheet, 'off')),
+      ]),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  if (choice == 'off') return state.setEveningReminder('off');
+  final parts = state.eveningReminder.split(':');
+  final initial = parts.length == 2
+      ? TimeOfDay(hour: int.tryParse(parts[0]) ?? 21, minute: int.tryParse(parts[1]) ?? 0)
+      : const TimeOfDay(hour: 21, minute: 0);
+  final t = await showTimePicker(context: context, initialTime: initial);
+  if (t == null) return;
+  await state.setEveningReminder('${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
+  await state.capture.requestPostNotifications();
+}

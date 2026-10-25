@@ -3,6 +3,43 @@ part of 'strings.dart';
 /// The shared budget's texts (lib/household/, lib/ui/household_screen.dart) and later additions
 /// in all six languages at once: [ru, en, zh, kk, de, nl].
 const _hh = <String, List<String>>{
+  // --- "Share → Budget", the evening reminder ---
+  'share_nothing': [
+    'В том, чем поделились, не нашлось текста с суммой.',
+    'No text with an amount was found in what was shared.',
+    '分享的内容中没有找到带金额的文字。',
+    'Бөлісілген мазмұннан сомасы бар мәтін табылмады.',
+    'Im Geteilten wurde kein Text mit einem Betrag gefunden.',
+    'In wat is gedeeld, is geen tekst met een bedrag gevonden.',
+  ],
+  'share_ocr_failed': [
+    'Не получилось прочитать картинку: распознавание текста работает через сервисы Google Play и при первом запуске скачивает модель. Попробуйте позже или поделитесь текстом.',
+    'Couldn\'t read the picture: text recognition works through Google Play services and downloads its model first. Try later, or share the text.',
+    '无法读取图片：文字识别依赖 Google Play 服务，首次使用需下载模型。请稍后再试，或直接分享文字。',
+    'Суретті оқу мүмкін болмады: мәтінді тану Google Play қызметтері арқылы жұмыс істейді және алдымен модельді жүктейді. Кейінірек көріңіз немесе мәтінмен бөлісіңіз.',
+    'Das Bild ließ sich nicht lesen: Die Texterkennung läuft über die Google-Play-Dienste und lädt zuerst ihr Modell. Später erneut versuchen oder den Text teilen.',
+    'De afbeelding kon niet worden gelezen: tekstherkenning werkt via Google Play-services en downloadt eerst een model. Probeer het later of deel de tekst.',
+  ],
+  'evening_title': ['Сегодня ничего не записано', 'Nothing recorded today', '今天还没有记账', 'Бүгін ештеңе жазылмады',
+      'Heute noch nichts erfasst', 'Vandaag nog niets vastgelegd'],
+  'evening_text': [
+    'Запишите траты за день, пока помните.',
+    'Note down today\'s spending while you remember it.',
+    '趁还记得，把今天的支出记下来吧。',
+    'Есіңізде барда бүгінгі шығындарды жазып қойыңыз.',
+    'Tragen Sie die Ausgaben des Tages ein, solange Sie sich erinnern.',
+    'Leg de uitgaven van vandaag vast nu je ze nog weet.',
+  ],
+  'evening_setting': ['Напоминание вечером', 'Evening reminder', '晚间提醒', 'Кешкі еске салу', 'Abenderinnerung', 'Avondherinnering'],
+  'evening_setting_sub': [
+    'Если за день ничего не записано',
+    'If nothing was recorded that day',
+    '当天没有任何记录时',
+    'Күні бойы ештеңе жазылмаса',
+    'Wenn am Tag nichts erfasst wurde',
+    'Als er die dag niets is vastgelegd',
+  ],
+  'evening_pick_time': ['Выбрать время', 'Choose the time', '选择时间', 'Уақытты таңдау', 'Uhrzeit wählen', 'Tijd kiezen'],
   // --- Closing a goal with a purchase (lib/ui/goal_spend.dart) ---
   'goal_close': ['Закрыть цель', 'Close a goal', '完成目标', 'Мақсатты жабу', 'Ziel abschließen', 'Doel afsluiten'],
   'goal_from': ['Цель: {0}', 'Goal: {0}', '目标：{0}', 'Мақсат: {0}', 'Ziel: {0}', 'Doel: {0}'],
