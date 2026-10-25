@@ -13,6 +13,7 @@ import '../platform.dart';
 import '../state/app_state.dart';
 import 'bank_log_screen.dart';
 import 'data_screens.dart';
+import 'envelopes_screen.dart';
 import 'home_screen.dart';
 import 'household_screen.dart';
 import 'ledger.dart';
@@ -21,6 +22,7 @@ import 'onboarding.dart';
 import 'recurring_screen.dart';
 import 'statement_import_screen.dart';
 import 'sync_screen.dart';
+import 'tax_screen.dart';
 import 'widgets.dart';
 
 /// Currency name in the app language (full names exist in Russian; other languages show the code).
@@ -74,6 +76,13 @@ class SettingsScreen extends StatelessWidget {
             value: tr(state.fixedDailyLimit ? 'daily_limit_fixed_short' : 'daily_limit_even_short'),
             onTap: () => chooseDailyLimitMode(context),
           ),
+        LedgerTile(tr('tax_title'), hint: tr('tax_tile_sub'), onTap: () => push(const TaxScreen())),
+        LedgerTile(
+          tr('env_title'),
+          hint: tr('env_tile_sub'),
+          value: tr(state.envelopes.on ? 'lock_value_on' : 'lock_value_off'),
+          onTap: () => push(const EnvelopesScreen()),
+        ),
         LedgerTile(
           tr('base_currency'),
           value: '$code ${currencySymbol(code)}',

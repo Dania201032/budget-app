@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Directory, FileSystemEvent;
 import 'dart:typed_data';
 
@@ -6,14 +7,19 @@ import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 
 import '../capture/capture_service.dart';
+import '../capture/receipt.dart';
 import '../capture/shared_text.dart';
 import '../data/models.dart';
 import '../data/rates.dart';
 import '../data/repository.dart';
 import '../domain/budget_math.dart';
+import '../domain/envelopes.dart';
+import '../domain/holding.dart';
+import '../domain/net_worth.dart';
 import '../domain/money.dart';
 import '../domain/periods.dart';
 import '../domain/runway.dart';
+import '../domain/tax_tags.dart';
 import '../household/household.dart';
 import '../import/statement_import.dart';
 import '../io/app_log.dart';
@@ -192,6 +198,7 @@ class AppState extends ChangeNotifier {
   Set<String> get foreignCurrencies => {
         for (final a in accounts) a.currency,
         for (final g in goals) g.currency,
+        for (final h in holdings) h.currency,
         for (final t in [...homeTxns, ...periodTxns, ..._currentMonthTxns]) t.currency,
       }..remove(baseCurrency);
 
@@ -338,9 +345,13 @@ class AppState extends ChangeNotifier {
     accounts = await repo.accounts();
     goals = await repo.goals();
     goalNames = await repo.goalNames();
+    await _loadNetWorth();
+    await _loadEnvelopes();
+    taxTags = await loadTaxTags(repo);
     await _reloadAll(notify: false);
     loaded = true;
     await _takePendingAction();
+    if (foreignCurrencies.isEmpty) await _recordNetWorth();
     notifyListeners();
     _updateRates();
   }
@@ -495,6 +506,7 @@ class AppState extends ChangeNotifier {
       _budgets[m] = await _budgetInBase(m);
     }
     _compute();
+    await _recordNetWorth();
     notifyListeners();
     HomeWidgetsBridge.push(this);
   }
@@ -869,6 +881,213 @@ class AppState extends ChangeNotifier {
     accounts = await repo.accounts();
     _changed();
     await _reloadAll();
+  }
+
+  // --- Tax marks (lib/domain/tax_tags.dart) ---
+
+  /// Category uid -> tax mark.
+  Map<String, String> taxTags = {};
+
+  String? categoryTaxTag(int? categoryId) => categoryId == null ? null : taxTags[_categoryUids[categoryId]];
+
+  /// The mark that counts for [t]: its own, else its category's.
+  String? taxTagOf(Txn t) => t.taxTag == 'none' ? null : (t.taxTag ?? categoryTaxTag(t.categoryId));
+
+  Future<void> setCategoryTaxTag(Category c, String? tag) async {
+    final uid = _categoryUids[c.id];
+    if (uid == null) return;
+    if (tag == null) {
+      taxTags.remove(uid);
+    } else {
+      taxTags[uid] = tag;
+    }
+    await saveTaxTags(repo, taxTags);
+    _changed();
+    notifyListeners();
+  }
+
+  /// The year's marked spending, by mark.
+  Future<Map<String, List<Txn>>> taxReport(int year) async {
+    final out = <String, List<Txn>>{};
+    for (final t in await repo.txnsBetween(DateTime(year), DateTime(year + 1))) {
+      if (t.kind != TxnKind.expense) continue;
+      final tag = taxTagOf(t);
+      if (tag != null) out.putIfAbsent(tag, () => []).add(t);
+    }
+    return out;
+  }
+
+  /// Reads a receipt photo on the phone: its QR code and its text.
+  Future<ReceiptGuess> scanReceipt(String path) async {
+    final r = await capture.scanReceipt(path);
+    final qr = r.$2 == null ? null : parseFiscalQr(r.$2!);
+    if (qr != null) {
+      final text = r.$1 == null ? null : parseReceiptText(r.$1!);
+      return ReceiptGuess(amountMinor: qr.amountMinor, currency: qr.currency, time: qr.time, shop: text?.shop, refund: qr.refund);
+    }
+    return r.$1 == null ? const ReceiptGuess() : parseReceiptText(r.$1!);
+  }
+
+  // --- Envelopes (lib/domain/envelopes.dart) ---
+
+  EnvelopeSettings envelopes = EnvelopeSettings();
+  Map<int, String> _categoryUids = {};
+
+  Future<void> _loadEnvelopes() async {
+    envelopes = await loadEnvelopes(repo);
+    _categoryUids = {
+      for (final r in await repo.db.query('categories', columns: ['id', 'uid']))
+        if (r['uid'] != null) r['id'] as int: r['uid'] as String,
+    };
+  }
+
+  /// Every expense category's envelope in [month]: put in, spent, and what is left after
+  /// carrying everything since the mode was turned on.
+  Future<List<Envelope>> envelopesFor(DateTime month) async {
+    final key = envelopeMonth(month);
+    final start = envelopes.start ?? key;
+    final months = envelopeMonthsUpTo(start, key);
+    final s = start.split('-').map(int.parse).toList();
+    final txns = await repo.txnsBetween(DateTime(s[0], s[1]), DateTime(month.year, month.month + 1));
+    final spent = <int, Map<String, int>>{};
+    for (final t in txns) {
+      if (t.kind != TxnKind.expense || t.excluded || t.categoryId == null) continue;
+      final v = rates.toBase(t.effectiveMinor, t.currency, t.time) ?? (t.currency == baseCurrency ? t.effectiveMinor : 0);
+      final m = envelopeMonth(t.time);
+      spent.putIfAbsent(t.categoryId!, () => {})[m] = (spent[t.categoryId!]![m] ?? 0) + v;
+    }
+    return [
+      for (final c in categoriesOf(TxnKind.expense))
+        if (_categoryUids[c.id] case final uid?)
+          Envelope(
+            c.id,
+            envelopes.allocated(uid, key),
+            spent[c.id]?[key] ?? 0,
+            months.fold(0, (a, m) => a + envelopes.allocated(uid, m) - (spent[c.id]?[m] ?? 0)),
+          ),
+    ];
+  }
+
+  /// The month's budget not yet put in an envelope.
+  int envelopesToAssign(DateTime month, List<Envelope> list) =>
+      commonBudget(month) - list.fold(0, (a, e) => a + e.allocated);
+
+  Future<void> setEnvelopesOn(bool on) async {
+    envelopes.on = on;
+    envelopes.start ??= envelopeMonth(DateTime.now());
+    await saveEnvelopes(repo, envelopes);
+    _changed();
+    notifyListeners();
+  }
+
+  /// What goes into [c]'s envelope in [month]; [everyMonth]: from now on, every month.
+  Future<void> setEnvelope(Category c, DateTime month, int amountMinor, {required bool everyMonth}) async {
+    final uid = _categoryUids[c.id];
+    if (uid == null) return;
+    final key = envelopeMonth(month);
+    if (everyMonth) {
+      envelopes.plan[uid] = amountMinor;
+      envelopes.months[key]?.remove(uid);
+    } else {
+      envelopes.months.putIfAbsent(key, () => {})[uid] = amountMinor;
+    }
+    await saveEnvelopes(repo, envelopes);
+    _changed();
+    notifyListeners();
+  }
+
+  /// Moves money between two envelopes for [month] (covering an overspent one, say).
+  Future<void> moveEnvelope(Category from, Category to, DateTime month, int amountMinor) async {
+    final a = _categoryUids[from.id], b = _categoryUids[to.id];
+    if (a == null || b == null || a == b) return;
+    final key = envelopeMonth(month);
+    final m = envelopes.months.putIfAbsent(key, () => {});
+    m[a] = envelopes.allocated(a, key) - amountMinor;
+    m[b] = envelopes.allocated(b, key) + amountMinor;
+    await saveEnvelopes(repo, envelopes);
+    _changed();
+    notifyListeners();
+  }
+
+  // --- Net worth ---
+
+  /// Investments, property and loans (shared with the computer's Income page).
+  List<Holding> holdings = [];
+
+  /// The net worth recorded for each month ("2026-10").
+  Map<String, int> netWorthHistory = {};
+
+  NetWorth get netWorth {
+    final now = DateTime.now();
+    var accounts = 0, cards = 0;
+    for (final e in balances.entries) {
+      final a = accountById[e.key];
+      final v = a == null ? null : rates.toBase(e.value, a.currency, now);
+      if (v == null) continue;
+      if (v >= 0) {
+        accounts += v;
+      } else {
+        cards -= v;
+      }
+    }
+    var investments = 0, property = 0, loans = 0;
+    for (final h in holdings) {
+      final v = rates.toBase(h.amountMinor, h.currency, now) ?? 0;
+      if (h.isLoan) {
+        loans += v;
+      } else if (h.type == 'property') {
+        property += v;
+      } else {
+        investments += v;
+      }
+    }
+    return NetWorth(
+      accounts: accounts,
+      cards: cards,
+      goals: goals.fold(0, (s, g) => s + (rates.toBase(g.savedMinor, g.currency, now) ?? 0)),
+      investments: investments,
+      property: property,
+      loans: loans,
+      owedToMe: owedToMeMinor,
+    );
+  }
+
+  /// After the computer saved its profile: investments and the envelopes' plan again.
+  Future<void> reloadShared() async {
+    await _loadNetWorth();
+    await _loadEnvelopes();
+    _changed();
+  }
+
+  Future<void> _loadNetWorth() async {
+    holdings = await loadHoldings(repo);
+    netWorthHistory = await loadNetWorthHistory(repo);
+  }
+
+  /// Writes this month's net worth when it changed (one setting, shared by the devices).
+  Future<void> _recordNetWorth() async {
+    if (balances.isEmpty && holdings.isEmpty && goals.isEmpty) return;
+    final key = monthKey(DateTime.now());
+    final v = netWorth.total;
+    if (netWorthHistory[key] == v) return;
+    netWorthHistory = {...netWorthHistory, key: v};
+    await repo.setSetting('networth_history', jsonEncode(netWorthHistory));
+  }
+
+  Future<void> saveHolding(Holding h) async {
+    holdings = [for (final x in holdings) if (x.id != h.id) x, h];
+    await saveHoldings(repo, holdings);
+    _changed();
+    await _recordNetWorth();
+    notifyListeners();
+  }
+
+  Future<void> deleteHolding(Holding h) async {
+    holdings = [for (final x in holdings) if (x.id != h.id) x];
+    await saveHoldings(repo, holdings);
+    _changed();
+    await _recordNetWorth();
+    notifyListeners();
   }
 
   /// Total of all accounts with a balance, in the base currency.

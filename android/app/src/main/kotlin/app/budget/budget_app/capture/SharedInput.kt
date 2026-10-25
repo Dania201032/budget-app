@@ -36,11 +36,13 @@ object SharedInput {
             intent.getParcelableExtra(Intent.EXTRA_STREAM)
         }
 
-    /** The text in a shared picture, line by line (blocking: call off the main thread). */
-    fun readImage(ctx: Context, uri: Uri): String {
+    /** The text in a picture, line by line (blocking: call off the main thread). */
+    fun readImage(ctx: Context, uri: Uri): String = readImage(InputImage.fromFilePath(ctx, uri))
+
+    fun readImage(image: InputImage): String {
         val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
         try {
-            val result = Tasks.await(recognizer.process(InputImage.fromFilePath(ctx, uri)))
+            val result = Tasks.await(recognizer.process(image))
             return result.textBlocks.joinToString("\n") { b -> b.lines.joinToString("\n") { it.text } }
         } finally {
             recognizer.close()

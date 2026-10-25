@@ -18,6 +18,7 @@ import app.budget.budget_app.capture.BankLog
 import app.budget.budget_app.capture.CaptureInbox
 import app.budget.budget_app.capture.PaymentAccessibilityService
 import app.budget.budget_app.capture.PaymentNotificationListener
+import app.budget.budget_app.capture.ReceiptScanner
 import app.budget.budget_app.capture.SharedInput
 import app.budget.budget_app.capture.SplitActions
 import app.budget.budget_app.statements.PdfStatementText
@@ -35,12 +36,16 @@ class MainActivity : FlutterFragmentActivity() {
     private companion object {
         const val REQ_PICK_FOLDER = 41
         const val REQ_PICK_FILE = 42
+        const val REQ_CAMERA = 43
     }
 
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var pendingResult: MethodChannel.Result? = null
     private var pendingAction: Map<String, Any>? = null
+
+    /** Where the camera writes a receipt photo ("takeReceiptPhoto"). */
+    private var cameraFile: java.io.File? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -88,6 +93,27 @@ class MainActivity : FlutterFragmentActivity() {
                 "takePendingAction" -> {
                     result.success(pendingAction)
                     pendingAction = null
+                }
+                "scanReceipt" -> background(result) { ReceiptScanner.scan(this, call.argument<String>("path")!!) }
+                "takeReceiptPhoto" -> {
+                    // The system camera writes into a file of ours, given through the FileProvider.
+                    val dir = java.io.File(cacheDir, "receipt_camera").apply { mkdirs() }
+                    val file = java.io.File(dir, "shot_${System.currentTimeMillis()}.jpg")
+                    val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.receipts", file)
+                    cameraFile = file
+                    pendingResult = result
+                    try {
+                        @Suppress("DEPRECATION")
+                        startActivityForResult(
+                            Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                                .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+                                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                            REQ_CAMERA,
+                        )
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        pendingResult = null
+                        result.success(null)
+                    }
                 }
                 "readSharedImage" -> background(result) {
                     SharedInput.readImage(this, Uri.parse(call.argument<String>("uri")!!))
@@ -218,6 +244,12 @@ class MainActivity : FlutterFragmentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         val result = pendingResult ?: return
         pendingResult = null
+        if (requestCode == REQ_CAMERA) {
+            val file = cameraFile
+            cameraFile = null
+            result.success(if (resultCode == Activity.RESULT_OK && file != null && file.length() > 0) file.path else null)
+            return
+        }
         val uri = data?.data
         if (resultCode != Activity.RESULT_OK || uri == null) {
             result.success(null)

@@ -13,7 +13,7 @@ import '../platform.dart';
 import '../security/secure_store.dart';
 import '../sync/sync_tables.dart';
 
-const schemaVersion = 11;
+const schemaVersion = 13;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
@@ -36,6 +36,7 @@ Future<void> _create(Database db, int _) async {
   await migrateSyncV9(db);
   await migrateHouseholdV10(db);
   await _migrateV11(db);
+  await _migrateV13(db);
 }
 
 Future<void> _upgrade(Database db, int from, int to) async {
@@ -51,6 +52,22 @@ Future<void> _upgrade(Database db, int from, int to) async {
   // v10: the shared budget (people, account owners, who recorded what).
   if (from < 10) await migrateHouseholdV10(db);
   if (from < 11) await _migrateV11(db);
+  // v12: investments and loans, the net worth's history, envelopes and tax marks travel too.
+  if (from < 12) await _migrateV12(db);
+  if (from < 13) await _migrateV13(db);
+}
+
+/// v13: a photo of the receipt (a file on this device) and the operation's own tax mark.
+Future<void> _migrateV13(Database db) async {
+  final cols = {for (final c in await db.rawQuery('PRAGMA table_info(transactions)')) c['name'] as String};
+  if (cols.isEmpty) return;
+  if (!cols.contains('receipt')) await db.execute('ALTER TABLE transactions ADD COLUMN receipt TEXT');
+  if (!cols.contains('tax_tag')) await db.execute('ALTER TABLE transactions ADD COLUMN tax_tag TEXT');
+}
+
+Future<void> _migrateV12(Database db) async {
+  final tables = {for (final r in await db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) r['name'] as String};
+  if (tables.contains('sync_state') && tables.contains('settings')) await recreateSettingsTriggers(db);
 }
 
 /// v11: a purchase paid from a savings goal ("close a goal") remembers the goal.

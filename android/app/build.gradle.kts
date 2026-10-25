@@ -82,5 +82,7 @@ dependencies {
     // Text of a shared payment screenshot, read on the phone (Chinese and Latin script). The model
     // comes through Google Play services (downloaded once, see the manifest): the APK stays small.
     implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1")
+    // QR codes of receipts (Russian ones carry the total and the time).
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     testImplementation("junit:junit:4.13.2")
 }

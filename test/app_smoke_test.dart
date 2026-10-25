@@ -12,11 +12,14 @@ import 'package:budget_app/main.dart';
 import 'package:budget_app/state/app_state.dart';
 import 'package:budget_app/ui/analytics_screen.dart';
 import 'package:budget_app/ui/bank_log_screen.dart';
+import 'package:budget_app/ui/envelopes_screen.dart';
 import 'package:budget_app/ui/home_screen.dart';
 import 'package:budget_app/ui/household_screen.dart';
 import 'package:budget_app/ui/lock_screen.dart';
+import 'package:budget_app/ui/net_worth_screen.dart';
 import 'package:budget_app/ui/settings_screen.dart';
 import 'package:budget_app/ui/statement_import_screen.dart';
+import 'package:budget_app/ui/tax_screen.dart';
 import 'package:budget_app/ui/txn_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -282,7 +285,7 @@ void main() {
       }
 
       // Screens reached deeper in Settings, opened directly (their tiles may sit under the navigation bar).
-      for (final screen in const <Widget>[CaptureSetupScreen(), BankLogScreen(), RatesScreen(), LockSettingsScreen(), StatementImportScreen(), HouseholdScreen(), HouseholdSetupScreen(), HouseholdJoinScreen()]) {
+      for (final screen in const <Widget>[CaptureSetupScreen(), BankLogScreen(), RatesScreen(), LockSettingsScreen(), StatementImportScreen(), HouseholdScreen(), HouseholdSetupScreen(), HouseholdJoinScreen(), NetWorthScreen(), EnvelopesScreen(), TaxScreen()]) {
         Navigator.of(tester.element(find.byType(SettingsScreen))).push(MaterialPageRoute<void>(builder: (_) => screen));
         await settle(tester);
         await back(tester);

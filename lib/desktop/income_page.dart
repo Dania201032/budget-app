@@ -230,7 +230,7 @@ class _Investments extends StatelessWidget {
     int toBase(int v, String c) => s.toBaseAmount(v, c, now) ?? 0;
     final all = p.holdings;
     final list = all.where((h) => filter == 'all' || _group(h.type) == filter).toList();
-    final total = all.fold<int>(0, (a, h) => a + toBase(h.amountMinor, h.currency));
+    final total = all.fold<int>(0, (a, h) => a + toBase(h.signedMinor, h.currency));
     final received = all.fold<int>(0, (a, h) => a + toBase(h.receivedMinor, h.currency));
     final passive = all.fold<double>(0, (a, h) => a + toBase(h.monthlyIncome.round(), h.currency));
     final avgSpent = desk.data.spentByMonth.skip(1).fold<int>(0, (a, b) => a + b) / 12;
@@ -385,7 +385,7 @@ class _HoldingDialogState extends State<_HoldingDialog> {
         child: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
             Choice(
-              options: [for (final t in ['deposit', 'savings', 'bonds', 'stocks', 'fund', 'other']) (t, tr('d_type_$t'))],
+              options: [for (final t in ['deposit', 'savings', 'bonds', 'stocks', 'fund', 'property', 'loan', 'other']) (t, tr('d_type_$t'))],
               value: type,
               onChanged: (v) => setState(() => type = v),
               dense: true,

@@ -138,6 +138,13 @@ class Txn {
   /// Paid from the savings of this goal ("close a goal"): not spending of the month's budget.
   final int? goalId;
 
+  /// The photo of the receipt: a file name in this device's receipts folder.
+  final String? receipt;
+
+  /// Tax mark of this operation ("medical", "education"…); "none" overrides the category's; null
+  /// takes the category's (setting "tax_tags").
+  final String? taxTag;
+
   const Txn({
     this.id,
     required this.time,
@@ -157,6 +164,8 @@ class Txn {
     this.pairId,
     this.author,
     this.goalId,
+    this.receipt,
+    this.taxTag,
   });
 
   /// Auto-captured from payment apps / bank notifications (not manual, not imported from a spreadsheet).
@@ -186,6 +195,8 @@ class Txn {
         pairId: r['pair_id'] as int?,
         author: r['author'] as String?,
         goalId: r['goal_id'] as int?,
+        receipt: r['receipt'] as String?,
+        taxTag: r['tax_tag'] as String?,
       );
 
   Map<String, Object?> toRow() => {
@@ -207,6 +218,8 @@ class Txn {
         'pair_id': pairId,
         'author': author,
         'goal_id': goalId,
+        'receipt': receipt,
+        'tax_tag': taxTag,
       };
 
   Txn copyWith({
@@ -226,6 +239,8 @@ class Txn {
     bool? ownTransfer,
     int? Function()? pairId,
     int? Function()? goalId,
+    String? Function()? receipt,
+    String? Function()? taxTag,
   }) =>
       Txn(
         id: id,
@@ -246,6 +261,8 @@ class Txn {
         pairId: pairId != null ? pairId() : this.pairId,
         author: author,
         goalId: goalId != null ? goalId() : this.goalId,
+        receipt: receipt != null ? receipt() : this.receipt,
+        taxTag: taxTag != null ? taxTag() : this.taxTag,
       );
 }
 

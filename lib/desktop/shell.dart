@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
 import '../data/models.dart';
+import '../domain/envelopes.dart';
 import '../domain/money.dart';
 import '../domain/runway.dart';
 import '../l10n/strings.dart';
@@ -74,6 +75,10 @@ class DeskController extends ChangeNotifier {
     }
     _loading = true;
     try {
+      // Investments and the plan by category are shared: the phone may have changed them.
+      profile.holdings = [...state.holdings];
+      final plan = await envelopePlanById(state.repo);
+      if (plan.isNotEmpty) profile.categoryPlan = plan;
       data = await DeskData.load(state, profile);
       runway = await state.computeRunwayFor(runwayConfig(withScenarios: true));
     } catch (e) {
@@ -107,7 +112,7 @@ class DeskController extends ChangeNotifier {
     final now = DateTime.now();
     return profile.holdings
         .where((h) => h.counted)
-        .fold(0, (t, h) => t + (state.toBaseAmount(h.amountMinor, h.currency, now) ?? 0));
+        .fold(0, (t, h) => t + (state.toBaseAmount(h.signedMinor, h.currency, now) ?? 0));
   }
 
   /// The user's forecast settings plus counted investments and, optionally, scenarios.
@@ -141,6 +146,8 @@ class DeskController extends ChangeNotifier {
 
   Future<void> saveProfile({bool refold = true}) async {
     await profile.save(state.repo);
+    // The shared parts (investments, the plan) are the app state's too.
+    await state.reloadShared();
     _applyLook();
     notifyListeners();
     if (refold) await reload();
@@ -534,7 +541,7 @@ class _Accounts extends StatelessWidget {
     final now = DateTime.now();
     final list = s.accounts.where((a) => s.balances.containsKey(a.id)).toList();
     final counted = d.profile.holdings.where((h) => h.counted);
-    final holdingsBase = counted.fold<int>(0, (t, h) => t + (s.toBaseAmount(h.amountMinor, h.currency, now) ?? 0));
+    final holdingsBase = counted.fold<int>(0, (t, h) => t + (s.toBaseAmount(h.signedMinor, h.currency, now) ?? 0));
     final foreign = {for (final a in list) a.currency}..remove(s.baseCurrency);
     String? rateLine;
     if (foreign.isNotEmpty) {

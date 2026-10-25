@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the system camera may write a receipt photo for the app (MainActivity "takeReceiptPhoto"). -->
+<paths>
+    <cache-path name="receipt_camera" path="receipt_camera/" />
+</paths>

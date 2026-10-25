@@ -45,10 +45,20 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
+        <!-- The camera writes receipt photos here. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.receipts"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/receipt_paths" />
+        </provider>
         <!-- The screenshot text model of Google Play services, fetched when the app is installed. -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="ocr_chinese" />
+            android:value="ocr_chinese,barcode" />
         <!-- "Add expense" in the Quick Settings panel. -->
         <service
             android:name=".widgets.QuickAddTile"
@@ -175,6 +185,9 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
         </intent>
     </queries>
 </manifest>

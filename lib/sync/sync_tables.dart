@@ -23,14 +23,17 @@ class SyncTable {
 }
 
 /// Settings that are the same on all devices; the rest (language, backup folder, capture…) are per device.
-/// "household" is the shared budget's setup; `pbudget:<person>` a person's own monthly limit.
+/// "household" is the shared budget's setup; `pbudget:<person>` a person's own monthly limit;
+/// "desk_holdings" the investments, property and loans; "networth_history" the net worth by month;
+/// "envelopes" the envelope budgeting; "tax_tags" the tax marks of categories.
 const syncedSettings = [
   'base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', 'daily_limit',
-  'self_names', 'runway_config', 'country', 'household',
+  'self_names', 'runway_config', 'country', 'household', 'desk_holdings', 'networth_history', 'envelopes', 'tax_tags',
 ];
 
 const _settingsFilter = "(key IN ('base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', "
-    "'daily_limit', 'self_names', 'runway_config', 'country', 'household') OR key LIKE 'pbudget:%')";
+    "'daily_limit', 'self_names', 'runway_config', 'country', 'household', 'desk_holdings', 'networth_history', "
+    "'envelopes', 'tax_tags') OR key LIKE 'pbudget:%')";
 
 /// In dependency order: parents before the rows that refer to them.
 const syncTables = [
@@ -171,9 +174,14 @@ Future<void> migrateHouseholdV10(Database db) async {
   if (existing.contains('sync_state')) {
     await createSyncTriggers(db, syncTable('people'));
     // The settings that travel now include the shared budget's.
-    for (final e in ['insert', 'update', 'delete']) {
-      await db.execute('DROP TRIGGER IF EXISTS sync_settings_$e');
-    }
-    if (existing.contains('settings')) await createSyncTriggers(db, syncTable('settings'));
+    if (existing.contains('settings')) await recreateSettingsTriggers(db);
   }
+}
+
+/// The synced settings' triggers again, after [syncedSettings] grew.
+Future<void> recreateSettingsTriggers(Database db) async {
+  for (final e in ['insert', 'update', 'delete']) {
+    await db.execute('DROP TRIGGER IF EXISTS sync_settings_$e');
+  }
+  await createSyncTriggers(db, syncTable('settings'));
 }

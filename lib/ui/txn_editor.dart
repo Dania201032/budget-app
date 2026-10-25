@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -6,10 +7,15 @@ import 'package:provider/provider.dart';
 import '../data/models.dart';
 import '../domain/currencies.dart';
 import '../domain/money.dart';
+import '../domain/tax_tags.dart';
+import '../io/receipts.dart';
 import '../l10n/strings.dart';
+import '../platform.dart';
 import '../state/app_state.dart';
-import 'ledger.dart';
 import 'goal_spend.dart';
+import 'ledger.dart';
+import 'lock_screen.dart';
+import 'receipt_view.dart';
 import 'split_sheet.dart';
 
 /// [draft] pre-fills a new transaction (e.g. from a skipped bank notification).
@@ -60,6 +66,10 @@ class _TxnEditorState extends State<TxnEditor> {
   /// "Close a goal": the goal that paid for this purchase, and (when just chosen) whether it is
   /// reached and closed.
   int? _goalId;
+
+  /// The receipt's photo (a file name on this device) and the operation's own tax mark.
+  String? _receipt;
+  String? _taxTag;
   bool _goalChosen = false;
   bool _closeGoal = false;
   late bool _excluded;
@@ -86,6 +96,8 @@ class _TxnEditorState extends State<TxnEditor> {
     _time = t?.time ?? DateTime.now();
     _categoryId = t?.categoryId;
     _goalId = t?.goalId;
+    _receipt = t?.receipt;
+    _taxTag = t?.taxTag;
     _accountId = t?.accountId ?? state.accounts.firstOrNull?.id;
     _excluded = t?.excluded ?? false;
     _ownTransfer = t?.ownTransfer ?? false;
@@ -181,6 +193,8 @@ class _TxnEditorState extends State<TxnEditor> {
       accountId: () => _accountId,
       merchant: () => merchant,
       note: () => note,
+      receipt: () => _receipt,
+      taxTag: () => _taxTag,
       needsReview: _categoryId == null && base.isCaptured && !_ownTransfer,
     );
     final id = await state.saveTxn(txn, rememberMerchant: _remember);
@@ -209,6 +223,89 @@ class _TxnEditorState extends State<TxnEditor> {
     HapticFeedback.lightImpact();
     if (close && mounted) Navigator.pop(context);
     return state.repo.txnById(id);
+  }
+
+  String _taxTagLabel(AppState state) {
+    final own = _taxTag;
+    final tag = own == 'none' ? null : (own ?? state.categoryTaxTag(_categoryId));
+    return tag == null ? tr('tax_mark_none_short') : '${tr('tax_mark')}: ${tr('tax_$tag')}';
+  }
+
+  Future<void> _chooseTaxTag(AppState state) async {
+    final cat = state.categoryTaxTag(_categoryId);
+    const asCategory = '';
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(tr('tax_mark'), style: Theme.of(c).textTheme.titleMedium),
+          ),
+          ListTile(
+            title: Text(tr('tax_as_category', [cat == null ? tr('tax_mark_none_short') : tr('tax_$cat')])),
+            trailing: _taxTag == null ? const Icon(Icons.check) : null,
+            onTap: () => Navigator.pop(c, asCategory),
+          ),
+          for (final t in taxTagKeys)
+            ListTile(
+              title: Text(tr('tax_$t')),
+              trailing: _taxTag == t ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(c, t),
+            ),
+          ListTile(
+            title: Text(tr('tax_mark_none')),
+            trailing: _taxTag == 'none' ? const Icon(Icons.check) : null,
+            onTap: () => Navigator.pop(c, 'none'),
+          ),
+        ]),
+      ),
+    );
+    if (v == null) return;
+    setState(() => _taxTag = v == asCategory ? null : v);
+  }
+
+  /// Camera or gallery, then the receipt is read: amount, time, shop (and the account in its
+  /// currency) fill in what is still empty.
+  Future<void> _scanReceipt(AppState state) async {
+    final camera = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.photo_camera_outlined), title: Text(tr('rc_camera')), onTap: () => Navigator.pop(c, true)),
+          ListTile(leading: const Icon(Icons.photo_library_outlined), title: Text(tr('rc_gallery')), onTap: () => Navigator.pop(c, false)),
+        ]),
+      ),
+    );
+    if (camera == null) return;
+    final String? path = camera
+        ? await appLock.whileInSystemScreen(state.capture.takeReceiptPhoto)
+        : (await appLock.whileInSystemScreen(() => FilePicker.pickFiles(type: FileType.image))).firstOrNull?.path;
+    if (path == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final guess = await state.scanReceipt(path);
+    final name = await keepReceipt(path);
+    if (!mounted) return;
+    setState(() {
+      _receipt = name;
+      if (guess.amountMinor != null) _expr = _plainAmount(guess.amountMinor!);
+      if (guess.time != null) _time = guess.time!;
+      if (guess.shop != null && _merchant.text.trim().isEmpty) _merchant.text = guess.shop!;
+      if (guess.refund) _kind = TxnKind.income;
+      final cur = guess.currency;
+      final account = _accountId == null ? null : state.accountById[_accountId];
+      if (cur != null && account?.currency != cur) {
+        final other = state.accounts.where((a) => a.currency == cur).firstOrNull;
+        if (other != null) _accountId = other.id;
+      }
+    });
+    messenger.showSnackBar(SnackBar(
+      content: Text(guess.isEmpty
+          ? tr('rc_nothing')
+          : tr('rc_read', [guess.amountMinor == null ? '—' : formatMoney(guess.amountMinor!, guess.currency ?? state.baseCurrency)])),
+    ));
   }
 
   /// "From which account" (an income) / "to which account" (an expense) of a transfer to myself.
@@ -507,6 +604,34 @@ class _TxnEditorState extends State<TxnEditor> {
               Padding(
                 padding: const EdgeInsets.only(left: 12, bottom: 4),
                 child: Text(tr('goal_no_account_hint'), style: Theme.of(context).textTheme.bodySmall),
+              ),
+            // A photo of the receipt: read on the phone, kept with the operation.
+            if (_kind == TxnKind.expense && !appIsDesktop)
+              Row(children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => _scanReceipt(state),
+                      icon: Icon(_receipt == null ? Icons.document_scanner_outlined : Icons.receipt_long, size: 18),
+                      label: Text(tr(_receipt == null ? 'rc_scan' : 'rc_attached')),
+                    ),
+                  ),
+                ),
+                if (_receipt != null) ...[
+                  IconButton(tooltip: tr('rc_show'), icon: const Icon(Icons.image_outlined, size: 18), onPressed: () => showReceipt(context, _receipt!)),
+                  IconButton(tooltip: tr('rc_remove'), icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _receipt = null)),
+                ],
+              ]),
+            // What may lower the tax: the category's mark, or the operation's own.
+            if (_kind == TxnKind.expense)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _chooseTaxTag(state),
+                  icon: const Icon(Icons.account_balance_outlined, size: 18),
+                  label: Text(_taxTagLabel(state), overflow: TextOverflow.ellipsis),
+                ),
               ),
             LedgerSection(tr('category'), padding: const EdgeInsets.only(top: 6, bottom: 8)),
             Container(

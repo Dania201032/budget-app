@@ -10,6 +10,7 @@ import '../household/household.dart' show BudgetScope;
 import '../l10n/strings.dart';
 import '../platform.dart';
 import '../state/app_state.dart';
+import 'envelopes_screen.dart';
 import 'ledger.dart';
 import 'motion.dart';
 import 'money_screen.dart';
@@ -49,6 +50,14 @@ class HomeScreen extends StatelessWidget {
       if (state.budgetEnabled && stats.isCurrent && state.todayStats != null)
         _TodayBlock(stats: state.todayStats!, reserve: state.goalReserve(DateTime.now()), currency: state.baseCurrency),
       _PeriodSummary(stats: stats, currency: state.baseCurrency, budgetOn: state.budgetEnabled),
+      // Envelope budgeting on: what is left in each category's envelope.
+      if (state.envelopes.on && stats.isCurrent)
+        LedgerTile(
+          tr('env_title'),
+          hint: tr('env_home_sub'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EnvelopesScreen())),
+        ),
       if (showCalendar) ...[
         LedgerSection(tr('by_days'), padding: const EdgeInsets.fromLTRB(16, 22, 16, 10)),
         PeriodCalendar(state: state, stats: stats, txns: state.homeTxns, showHint: false),

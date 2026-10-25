@@ -1,7 +1,11 @@
 import 'dart:convert';
 
 import '../data/repository.dart';
+import '../domain/envelopes.dart';
+import '../domain/holding.dart';
 import '../ui/onboarding.dart' as phone show countries;
+
+export '../domain/holding.dart';
 
 /// What the computer version keeps besides the shared data: the user's countries, investments,
 /// category plans, forecast scenarios, hint rules and tax inputs. Stored as JSON settings, so they
@@ -86,98 +90,6 @@ class MyCountry {
   final bool home;
   const MyCountry(this.code, this.home);
   Map<String, Object?> toJson() => {'code': code, 'home': home};
-}
-
-/// A deposit, savings account, bonds, shares, a fund — money that earns.
-class Holding {
-  final String id;
-
-  /// deposit | savings | bonds | stocks | fund | other
-  final String type;
-  final String name;
-  final String where;
-  final String currency;
-  final int amountMinor;
-
-  /// Yearly rate, percent (interest, coupon, expected growth).
-  final double ratePct;
-
-  /// monthly | quarterly | twice | yearly | daily | none
-  final String payout;
-
-  /// Paid so far this year (after tax), minor units.
-  final int receivedMinor;
-  final DateTime? nextPayment;
-  final DateTime? maturity;
-
-  /// Counted in "All money" and the forecast.
-  final bool counted;
-
-  const Holding({
-    required this.id,
-    required this.type,
-    required this.name,
-    this.where = '',
-    required this.currency,
-    required this.amountMinor,
-    this.ratePct = 0,
-    this.payout = 'monthly',
-    this.receivedMinor = 0,
-    this.nextPayment,
-    this.maturity,
-    this.counted = false,
-  });
-
-  /// Expected payment per month (minor units), from the yearly rate.
-  double get monthlyIncome => payout == 'none' ? 0 : amountMinor * ratePct / 100 / 12;
-
-  Map<String, Object?> toJson() => {
-        'id': id,
-        'type': type,
-        'name': name,
-        'where': where,
-        'currency': currency,
-        'amount': amountMinor,
-        'rate': ratePct,
-        'payout': payout,
-        'received': receivedMinor,
-        'next': nextPayment?.millisecondsSinceEpoch,
-        'maturity': maturity?.millisecondsSinceEpoch,
-        'counted': counted,
-      };
-
-  factory Holding.fromJson(Map<String, dynamic> j) {
-    DateTime? d(Object? v) => v == null ? null : DateTime.fromMillisecondsSinceEpoch((v as num).toInt());
-    return Holding(
-      id: j['id'] as String? ?? '${DateTime.now().microsecondsSinceEpoch}',
-      type: j['type'] as String? ?? 'other',
-      name: j['name'] as String? ?? '',
-      where: j['where'] as String? ?? '',
-      currency: j['currency'] as String? ?? 'USD',
-      amountMinor: (j['amount'] as num?)?.toInt() ?? 0,
-      ratePct: (j['rate'] as num?)?.toDouble() ?? 0,
-      payout: j['payout'] as String? ?? 'monthly',
-      receivedMinor: (j['received'] as num?)?.toInt() ?? 0,
-      nextPayment: d(j['next']),
-      maturity: d(j['maturity']),
-      counted: j['counted'] as bool? ?? false,
-    );
-  }
-
-  Holding copyWith({bool? counted}) => Holding(
-        id: id,
-        type: type,
-        name: name,
-        where: where,
-        currency: currency,
-        amountMinor: amountMinor,
-        ratePct: ratePct,
-        payout: payout,
-        receivedMinor: receivedMinor,
-        nextPayment: nextPayment,
-        maturity: maturity,
-        counted: counted ?? this.counted,
-      );
 }
 
 /// A "what if" for the forecast: a one-off or monthly amount (+ income, − spending) from a month on.
@@ -290,8 +202,15 @@ class DeskProfile {
         : [MyCountry(country, true)];
     final h = await json('desk_holdings');
     if (h is List) p.holdings = [for (final e in h.whereType<Map>()) Holding.fromJson(e.cast<String, dynamic>())];
+    // The plan by category is the envelopes' monthly plan, shared with the phone; an older plan
+    // kept only on the computer is used until the first save.
+    final shared = await envelopePlanById(repo);
     final plan = await json('desk_category_plan');
-    if (plan is Map) p.categoryPlan = {for (final e in plan.entries) int.parse(e.key as String): (e.value as num).toInt()};
+    if (shared.isNotEmpty) {
+      p.categoryPlan = shared;
+    } else if (plan is Map) {
+      p.categoryPlan = {for (final e in plan.entries) int.parse(e.key as String): (e.value as num).toInt()};
+    }
     final sc = await json('desk_scenarios');
     if (sc is List) p.scenarios = [for (final e in sc.whereType<Map>()) Scenario.fromJson(e.cast<String, dynamic>())];
     final hints = await json('desk_hints');
@@ -329,6 +248,7 @@ class DeskProfile {
     await repo.setSetting('desk_countries', jsonEncode([for (final c in countries) c.toJson()]));
     await repo.setSetting('desk_holdings', jsonEncode([for (final h in holdings) h.toJson()]));
     await repo.setSetting('desk_category_plan', jsonEncode({for (final e in categoryPlan.entries) '${e.key}': e.value}));
+    await setEnvelopePlanById(repo, categoryPlan);
     await repo.setSetting('desk_scenarios', jsonEncode([for (final s in scenarios) s.toJson()]));
     await repo.setSetting(
         'desk_hints', jsonEncode({'on': hintsOn, 'level': hintLevels, 'shown': hintsShown, 'hidden': hiddenHints.toList()}));

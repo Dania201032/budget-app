@@ -9,6 +9,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
 import 'motion.dart';
+import 'net_worth_screen.dart';
 import 'settings_screen.dart';
 import 'widgets.dart';
 
@@ -51,6 +52,13 @@ class MoneyScreen extends StatelessWidget {
               ),
             ]),
           ),
+        // Everything one has minus everything one owes.
+        LedgerTile(
+          tr('nw_title'),
+          hint: tr('nw_tile_sub'),
+          value: formatMoney(state.netWorth.total, cur),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const NetWorthScreen())),
+        ),
         _Section(
           title: tr('accounts'),
           action: IconButton(

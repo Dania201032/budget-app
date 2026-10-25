@@ -66,7 +66,7 @@ class _Kpis extends StatelessWidget {
     final pct = hasBudget ? (m.spentMinor / m.budgetMinor * 100).round() : 0;
     final pace = (m.daysPassed / m.daysInMonth * 100).round();
     final now = DateTime.now();
-    final holdings = d.profile.holdings.where((h) => h.counted).fold<int>(0, (t, h) => t + (s.toBaseAmount(h.amountMinor, h.currency, now) ?? 0));
+    final holdings = d.profile.holdings.where((h) => h.counted).fold<int>(0, (t, h) => t + (s.toBaseAmount(h.signedMinor, h.currency, now) ?? 0));
     return AutoGrid(minWidth: 200, children: [
       Kpi(tr('d_spent_month'), money(m.spentMinor),
           note: hasBudget ? tr('d_spent_note', ['$pct%', money(m.budgetMinor), '$pace%']) : tr('d_no_budget')),

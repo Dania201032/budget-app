@@ -13,7 +13,10 @@ import '../ui/household_screen.dart' show HouseholdScreen;
 import '../ui/ledger.dart';
 import '../ui/lock_screen.dart' show LockSettingsScreen;
 import '../ui/settings_screen.dart' show CategoriesScreen, RatesScreen, accountDialog, chooseLanguage, pickCurrency;
+import '../ui/envelopes_screen.dart';
+import '../ui/net_worth_screen.dart';
 import '../ui/statement_import_screen.dart';
+import '../ui/tax_screen.dart';
 import '../ui/sync_screen.dart';
 import '../ui/widgets.dart' show askAmount;
 import 'documents_page.dart' show documentsDir, openPath;
@@ -242,6 +245,9 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
           DeskButton(tr('d_open'), onTap: () => _push(const HouseholdScreen())),
         ),
         row(tr('stmt_title'), tr('stmt_tile_sub'), DeskButton(tr('d_open'), onTap: () => _push(const StatementImportScreen()))),
+        row(tr('env_title'), tr('env_tile_sub'), DeskButton(tr('d_open'), onTap: () => _push(const EnvelopesScreen()))),
+        row(tr('tax_title'), tr('tax_tile_sub'), DeskButton(tr('d_open'), onTap: () => _push(const TaxScreen()))),
+        row(tr('nw_title'), tr('nw_tile_sub'), DeskButton(tr('d_open'), onTap: () => _push(const NetWorthScreen()))),
         row(tr('import_excel'), tr('import_excel_sub'), DeskButton(tr('d_open'), onTap: () => _push(const SheetImportScreen()))),
         row(tr('d_backups'), tr('d_backups_sub'), DeskButton(tr('d_open'), onTap: () => _push(const BackupScreen()))),
       ]),

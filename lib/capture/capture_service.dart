@@ -223,6 +223,29 @@ class CaptureService {
     }
   }
 
+  /// Takes a receipt photo with the system camera; the picture's path, or null.
+  Future<String?> takeReceiptPhoto() async {
+    try {
+      return await _channel.invokeMethod<String>('takeReceiptPhoto');
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// A receipt photo read on the phone: (its text, its QR code), each null if not found.
+  Future<(String?, String?)> scanReceipt(String path) async {
+    try {
+      final r = await _channel.invokeMapMethod<String, Object?>('scanReceipt', {'path': path});
+      return (r?['text'] as String?, r?['qr'] as String?);
+    } on PlatformException {
+      return (null, null);
+    } on MissingPluginException {
+      return (null, null);
+    }
+  }
+
   /// The text in a picture shared to the app ("Share → Budget"), read on the phone; null if none.
   Future<String?> readSharedImage(String uri) async {
     try {
