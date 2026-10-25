@@ -15,6 +15,7 @@ import '../ui/lock_screen.dart' show LockSettingsScreen;
 import '../ui/settings_screen.dart' show CategoriesScreen, RatesScreen, accountDialog, chooseLanguage, pickCurrency;
 import '../ui/envelopes_screen.dart';
 import '../ui/net_worth_screen.dart';
+import '../ui/plus_screen.dart';
 import '../ui/statement_import_screen.dart';
 import '../ui/tax_screen.dart';
 import '../ui/sync_screen.dart';
@@ -222,6 +223,7 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
                   })),
       ], lead: tr('d_hints_lead'), accent: true),
       section('sync', tr('d_sync'), [
+        row(tr('plus_title'), plusTileHint(s.plusStatus), DeskButton(tr('d_open'), onTap: () => _push(const PlusScreen()))),
         ListenableBuilder(
           listenable: s.sync,
           builder: (context, _) => row(
@@ -232,6 +234,7 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
               if (s.sync.otherDeviceSeen != null) tr('d_phone_seen', [whenText(s.sync.otherDeviceSeen!)]),
               if (s.sync.lastCheck != null) tr('d_sync_checked', [whenText(s.sync.lastCheck!)]),
               if (s.sync.lastError != null) '${tr('d_sync_failed')}: ${s.sync.lastError}',
+              if (s.syncPaused) tr('plus_sync_paused'),
             ].join('\n'),
             Wrap(spacing: 6, children: [
               DeskButton(tr('d_open'), onTap: () => _push(const SyncScreen())),

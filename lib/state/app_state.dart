@@ -23,6 +23,7 @@ import '../domain/tax_tags.dart';
 import '../household/household.dart';
 import '../import/statement_import.dart';
 import '../io/app_log.dart';
+import '../premium/premium.dart';
 import '../io/backup.dart';
 import '../io/home_widgets.dart';
 import '../io/sheet_import.dart';
@@ -42,10 +43,18 @@ class AppState extends ChangeNotifier {
   /// Phone ⇄ computer sync through a cloud folder (off until set up in Settings).
   final SyncService sync;
 
-  AppState(this.repo, this.capture, this.rates)
+  /// Budget Plus: trial, personal key or the store's subscription (lib/premium/).
+  final Plus plus;
+  PlusStatus plusStatus = const PlusStatus(PlusSource.trial);
+  bool get isPlus => plusStatus.active;
+  bool plusAllows(PlusFeature f) => plusStatus.allows(f);
+  bool get syncPaused => sync.enabled && !plusAllows(PlusFeature.sync);
+
+  AppState(this.repo, this.capture, this.rates, {StoreBilling? store})
       : _importer = CaptureImporter(repo),
         backup = BackupService(repo),
-        sync = SyncService(repo) {
+        sync = SyncService(repo),
+        plus = Plus(repo, store: store) {
     // Debts paid back in another currency are matched by the rate.
     repo.convert = rates.convert;
   }
@@ -232,6 +241,7 @@ class AppState extends ChangeNotifier {
     await rates.load(baseCurrency);
     AppLog.line('init: rates loaded');
     await _loadHousehold();
+    await _loadPlus();
     // Once: names and notes recorded before the parsers were fixed (v0.8.8).
     if (await repo.setting('cleanup_names') == null) {
       await repo.cleanUpCapturedNames();
@@ -291,8 +301,40 @@ class AppState extends ChangeNotifier {
     _syncSoon = Timer(d, syncNow);
   }
 
+  Future<void> _loadPlus() async {
+    final s = await plus.status(me: me);
+    plusStatus = s.source != PlusSource.household
+        ? s
+        : PlusStatus(s.source, until: s.until, licensee: people.where((p) => p.uid == s.licensee).firstOrNull?.name);
+  }
+
+  Future<void> refreshPlus() async {
+    await _loadPlus();
+    notifyListeners();
+  }
+
+  /// A personal key; true when it was valid.
+  Future<bool> enterPlusKey(String key) async {
+    final ok = await plus.enterKey(key) != null;
+    await refreshPlus();
+    return ok;
+  }
+
+  Future<void> removePlusKey() async {
+    await plus.removeKey();
+    await refreshPlus();
+  }
+
   /// Sends this device's changes and takes the other's; reloads the screens if something came.
   Future<void> syncNow() async {
+    // Sync is Plus: without it, it pauses (the data stays on every device as it is). In a shared
+    // budget one look a day still goes through: a partner's renewed Plus arrives that way.
+    if (!plusAllows(PlusFeature.sync)) {
+      if (!householdOn) return;
+      final last = DateTime.tryParse(await repo.setting('plus_check_sync') ?? '');
+      if (last != null && DateTime.now().difference(last) < const Duration(days: 1)) return;
+      await repo.setSetting('plus_check_sync', DateTime.now().toIso8601String());
+    }
     final r = await sync.sync();
     if (r != null && r.received > 0) {
       _budgets.clear();
@@ -333,6 +375,8 @@ class AppState extends ChangeNotifier {
     captureStatus = await capture.status();
     // The other devices may have changed the shared budget's people and limits.
     await _loadHousehold();
+    // A store subscription may have started or ended, the trial run out, a partner's Plus come.
+    await _loadPlus();
     final imported = await _importer.importAll(await capture.consumeInbox());
     if (imported > 0) {
       _dirty = true;

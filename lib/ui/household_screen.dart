@@ -9,6 +9,7 @@ import '../household/household.dart';
 import '../household/household_flow.dart';
 import '../l10n/strings.dart';
 import '../platform.dart';
+import '../premium/premium.dart';
 import '../state/app_state.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_folder.dart';
@@ -16,6 +17,7 @@ import '../sync/sync_service.dart';
 import 'home_screen.dart' show editBudgetDialog;
 import 'ledger.dart';
 import 'lock_screen.dart';
+import 'plus_screen.dart';
 import 'widgets.dart';
 
 /// Settings → Shared budget: setting one up (the four questions), joining one, and once in it,
@@ -38,9 +40,19 @@ class HouseholdScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(tr('hh_intro_sub'), style: muted),
           const SizedBox(height: 20),
-          FilledButton(onPressed: () => push(const HouseholdSetupScreen()), child: Text(tr('hh_create'))),
+          FilledButton(
+            onPressed: () async {
+              if (await requirePlus(context, PlusFeature.household)) push(const HouseholdSetupScreen());
+            },
+            child: Text(tr('hh_create')),
+          ),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: () => push(const HouseholdJoinScreen()), child: Text(tr('hh_join'))),
+          OutlinedButton(
+            onPressed: () async {
+              if (await requirePlus(context, PlusFeature.household)) push(const HouseholdJoinScreen());
+            },
+            child: Text(tr('hh_join')),
+          ),
           const SizedBox(height: 16),
           Text(tr('hh_join_sub'), style: muted),
         ]),

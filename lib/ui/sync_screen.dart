@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../household/household_flow.dart';
 import '../l10n/strings.dart';
 import '../platform.dart';
+import '../premium/premium.dart';
 import '../state/app_state.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_folder.dart';
@@ -13,6 +14,7 @@ import '../sync/sync_service.dart';
 import 'household_screen.dart';
 import 'ledger.dart';
 import 'lock_screen.dart';
+import 'plus_screen.dart';
 
 /// Settings → Sync: the phone and the computer share their data through a Google Drive folder.
 class SyncScreen extends StatelessWidget {
@@ -41,7 +43,11 @@ class SyncScreen extends StatelessWidget {
               child: FilledButton.icon(
                 icon: const Icon(Icons.folder_open),
                 label: Text(tr('sync_choose_folder')),
-                onPressed: sync.busy ? null : () => _setUp(context, state),
+                onPressed: sync.busy
+                    ? null
+                    : () async {
+                        if (await requirePlus(context, PlusFeature.sync) && context.mounted) await _setUp(context, state);
+                      },
               ),
             ),
           ] else ...[
@@ -52,6 +58,11 @@ class SyncScreen extends StatelessWidget {
               value: sync.lastSync == null ? tr('never') : DateFormat('dd.MM HH:mm', intlLocale).format(sync.lastSync!),
               hint: sync.lastError == null ? null : tr('sync_error', [sync.lastError]),
             ),
+            if (state.syncPaused)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(tr('plus_sync_paused'), style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: FilledButton.icon(
@@ -59,7 +70,11 @@ class SyncScreen extends StatelessWidget {
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.sync),
                 label: Text(sync.busy ? tr('sync_working') : tr('sync_now')),
-                onPressed: sync.busy ? null : () => state.syncNow(),
+                onPressed: sync.busy
+                    ? null
+                    : () async {
+                        if (await requirePlus(context, PlusFeature.sync)) await state.syncNow();
+                      },
               ),
             ),
             Padding(

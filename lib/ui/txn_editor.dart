@@ -17,6 +17,8 @@ import 'ledger.dart';
 import 'lock_screen.dart';
 import 'receipt_view.dart';
 import 'split_sheet.dart';
+import '../premium/premium.dart';
+import 'plus_screen.dart';
 
 /// [draft] pre-fills a new transaction (e.g. from a skipped bank notification).
 Future<void> openTxnEditor(BuildContext context, {Txn? txn, Txn? draft}) => Navigator.of(context).push(
@@ -232,6 +234,7 @@ class _TxnEditorState extends State<TxnEditor> {
   }
 
   Future<void> _chooseTaxTag(AppState state) async {
+    if (!await requirePlus(context, PlusFeature.taxes) || !mounted) return;
     final cat = state.categoryTaxTag(_categoryId);
     const asCategory = '';
     final v = await showModalBottomSheet<String>(
@@ -269,6 +272,7 @@ class _TxnEditorState extends State<TxnEditor> {
   /// Camera or gallery, then the receipt is read: amount, time, shop (and the account in its
   /// currency) fill in what is still empty.
   Future<void> _scanReceipt(AppState state) async {
+    if (!await requirePlus(context, PlusFeature.receipts) || !mounted) return;
     final camera = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,

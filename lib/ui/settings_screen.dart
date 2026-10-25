@@ -19,6 +19,7 @@ import 'household_screen.dart';
 import 'ledger.dart';
 import 'lock_screen.dart';
 import 'onboarding.dart';
+import 'plus_screen.dart';
 import 'recurring_screen.dart';
 import 'statement_import_screen.dart';
 import 'sync_screen.dart';
@@ -60,6 +61,13 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(tr('settings'))),
       body: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        LedgerTile(
+          tr('plus_title'),
+          hint: plusTileHint(state.plusStatus),
+          value: tr(state.isPlus ? 'lock_value_on' : 'lock_value_off'),
+          valueColor: state.isPlus ? Ledger.accentOf(context) : null,
+          onTap: () => push(const PlusScreen()),
+        ),
         LedgerSection(tr('budget'), padding: const EdgeInsets.fromLTRB(16, 18, 16, 0)),
         LedgerTile(
           tr('budget_on_switch'),

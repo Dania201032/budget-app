@@ -25,15 +25,17 @@ class SyncTable {
 /// Settings that are the same on all devices; the rest (language, backup folder, capture…) are per device.
 /// "household" is the shared budget's setup; `pbudget:<person>` a person's own monthly limit;
 /// "desk_holdings" the investments, property and loans; "networth_history" the net worth by month;
-/// "envelopes" the envelope budgeting; "tax_tags" the tax marks of categories.
+/// "envelopes" the envelope budgeting; "tax_tags" the tax marks of categories; "household_plus" that
+/// someone in the shared budget has Budget Plus (lib/premium/premium.dart).
 const syncedSettings = [
   'base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', 'daily_limit',
   'self_names', 'runway_config', 'country', 'household', 'desk_holdings', 'networth_history', 'envelopes', 'tax_tags',
+  'household_plus',
 ];
 
 const _settingsFilter = "(key IN ('base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', "
     "'daily_limit', 'self_names', 'runway_config', 'country', 'household', 'desk_holdings', 'networth_history', "
-    "'envelopes', 'tax_tags') OR key LIKE 'pbudget:%')";
+    "'envelopes', 'tax_tags', 'household_plus') OR key LIKE 'pbudget:%')";
 
 /// In dependency order: parents before the rows that refer to them.
 const syncTables = [

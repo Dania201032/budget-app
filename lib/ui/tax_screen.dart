@@ -11,6 +11,8 @@ import '../state/app_state.dart';
 import 'ledger.dart';
 import 'receipt_view.dart';
 import 'txn_editor.dart';
+import '../premium/premium.dart';
+import 'plus_screen.dart';
 
 /// Settings → Tax marks: the year's spending that may lower the tax, by mark, with the receipts;
 /// the categories' marks; a spreadsheet for the tax return or an adviser.
@@ -87,6 +89,7 @@ class _TaxScreenState extends State<TaxScreen> {
   }
 
   Future<void> _chooseForCategory(AppState state, Category c) async {
+    if (!await requirePlus(context, PlusFeature.taxes) || !mounted) return;
     const none = '';
     final v = await showModalBottomSheet<String>(
       context: context,
@@ -112,6 +115,7 @@ class _TaxScreenState extends State<TaxScreen> {
   }
 
   Future<void> _export(AppState state) async {
+    if (!await requirePlus(context, PlusFeature.taxes) || !mounted) return;
     final report = await state.taxReport(_year);
     final date = DateFormat('yyyy-MM-dd');
     final rows = <List<Object?>>[

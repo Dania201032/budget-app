@@ -13,7 +13,7 @@ import '../platform.dart';
 import '../security/secure_store.dart';
 import '../sync/sync_tables.dart';
 
-const schemaVersion = 13;
+const schemaVersion = 14;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
@@ -55,6 +55,8 @@ Future<void> _upgrade(Database db, int from, int to) async {
   // v12: investments and loans, the net worth's history, envelopes and tax marks travel too.
   if (from < 12) await _migrateV12(db);
   if (from < 13) await _migrateV13(db);
+  // v14: the note that someone in the shared budget has Budget Plus travels too.
+  if (from < 14) await _migrateV12(db);
 }
 
 /// v13: a photo of the receipt (a file on this device) and the operation's own tax mark.

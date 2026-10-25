@@ -16,6 +16,8 @@ import '../platform.dart';
 import '../state/app_state.dart';
 import 'bank_connect.dart';
 import 'lock_screen.dart';
+import '../premium/premium.dart';
+import 'plus_screen.dart';
 
 /// Adds operations from a bank's or payment app's statement file: those the app missed are
 /// added, those it already has are recognised (and get the shop's name and category), failed and
@@ -45,6 +47,7 @@ class _StatementImportScreenState extends State<StatementImportScreen> {
   }
 
   Future<void> _pick() async {
+    if (!await requirePlus(context, PlusFeature.statements) || !mounted) return;
     final files = await appLock.whileInSystemScreen(() => FilePicker.pickFiles(type: FileType.any));
     if (files.isEmpty || !mounted) return;
     final f = files.first;
@@ -66,6 +69,7 @@ class _StatementImportScreenState extends State<StatementImportScreen> {
 
   /// Operations downloaded straight from a bank (bunq API, FinTS) go the same way as a file's.
   Future<void> _download(Future<Statement?> Function(BuildContext) fetch) async {
+    if (!await requirePlus(context, PlusFeature.statements) || !mounted) return;
     setState(() {
       _fileName = null;
       _statement = null;

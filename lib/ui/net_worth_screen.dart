@@ -10,6 +10,8 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
 import 'motion.dart';
+import '../premium/premium.dart';
+import 'plus_screen.dart';
 import 'settings_screen.dart' show pickCurrency;
 
 /// Money → Net worth: everything one has minus everything one owes, how it went month by month,
@@ -156,6 +158,7 @@ class _HistoryChart extends StatelessWidget {
 
 /// Adds or edits an investment, property or loan.
 Future<void> editHolding(BuildContext context, [Holding? h]) async {
+  if (!await requirePlus(context, PlusFeature.netWorth) || !context.mounted) return;
   final state = context.read<AppState>();
   var type = h?.type ?? 'deposit';
   var currency = h?.currency ?? state.baseCurrency;

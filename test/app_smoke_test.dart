@@ -19,6 +19,7 @@ import 'package:budget_app/ui/lock_screen.dart';
 import 'package:budget_app/ui/net_worth_screen.dart';
 import 'package:budget_app/ui/settings_screen.dart';
 import 'package:budget_app/ui/statement_import_screen.dart';
+import 'package:budget_app/ui/plus_screen.dart';
 import 'package:budget_app/ui/tax_screen.dart';
 import 'package:budget_app/ui/txn_editor.dart';
 import 'package:flutter/material.dart';
@@ -285,7 +286,7 @@ void main() {
       }
 
       // Screens reached deeper in Settings, opened directly (their tiles may sit under the navigation bar).
-      for (final screen in const <Widget>[CaptureSetupScreen(), BankLogScreen(), RatesScreen(), LockSettingsScreen(), StatementImportScreen(), HouseholdScreen(), HouseholdSetupScreen(), HouseholdJoinScreen(), NetWorthScreen(), EnvelopesScreen(), TaxScreen()]) {
+      for (final screen in const <Widget>[CaptureSetupScreen(), BankLogScreen(), RatesScreen(), LockSettingsScreen(), StatementImportScreen(), HouseholdScreen(), HouseholdSetupScreen(), HouseholdJoinScreen(), NetWorthScreen(), EnvelopesScreen(), TaxScreen(), PlusScreen()]) {
         Navigator.of(tester.element(find.byType(SettingsScreen))).push(MaterialPageRoute<void>(builder: (_) => screen));
         await settle(tester);
         await back(tester);

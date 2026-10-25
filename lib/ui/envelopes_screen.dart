@@ -9,6 +9,8 @@ import '../domain/money.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
+import '../premium/premium.dart';
+import 'plus_screen.dart';
 
 /// Envelope budgeting: each category's money for the month, what is left after carrying the past
 /// months, and moving money between envelopes.
@@ -36,7 +38,12 @@ class _EnvelopesScreenState extends State<EnvelopesScreen> {
           const SizedBox(height: 8),
           Text(tr('env_intro_sub'), style: theme.textTheme.bodySmall?.copyWith(color: muted)),
           const SizedBox(height: 20),
-          FilledButton(onPressed: () => state.setEnvelopesOn(true), child: Text(tr('env_turn_on'))),
+          FilledButton(
+            onPressed: () async {
+              if (await requirePlus(context, PlusFeature.envelopes)) await state.setEnvelopesOn(true);
+            },
+            child: Text(tr('env_turn_on')),
+          ),
         ]),
       );
     }
@@ -97,6 +104,7 @@ class _EnvelopesScreenState extends State<EnvelopesScreen> {
   }
 
   Future<void> _move(BuildContext context, AppState state) async {
+    if (!await requirePlus(context, PlusFeature.envelopes) || !context.mounted) return;
     final cats = state.categoriesOf(TxnKind.expense);
     if (cats.length < 2) return;
     var from = cats.first, to = cats[1];
@@ -185,6 +193,7 @@ class _EnvelopeTile extends StatelessWidget {
   }
 
   Future<void> _edit(BuildContext context, AppState state, Category c) async {
+    if (!await requirePlus(context, PlusFeature.envelopes) || !context.mounted) return;
     var everyMonth = false;
     final ctrl = TextEditingController(text: e.allocated == 0 ? '' : (e.allocated / 100).toStringAsFixed(e.allocated % 100 == 0 ? 0 : 2));
     final ok = await showDialog<bool>(
