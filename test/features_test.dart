@@ -195,5 +195,27 @@ void main() {
       expect(await repo2.setting('backup_uri'), 'content://new-phone');
       await db2.close();
     });
+
+    test('restores rows that point at tables or rows restored after them', () async {
+      // A purchase paid from a goal (goal_id → goals, restored later in table order) and a
+      // transfer pair whose first half points at the second (pair_id → a later row).
+      final goal = await repo.addGoal(name: 'Trip', targetMinor: 1000, savedMinor: 10, currency: 'CNY', reserve: true);
+      final paid = (await insert(Txn(time: t0, amountMinor: 1990, currency: 'CNY', kind: TxnKind.expense, merchant: 'Item'))).id;
+      final out = (await insert(Txn(time: t0, amountMinor: 500, currency: 'CNY', kind: TxnKind.expense))).id;
+      final into = (await insert(Txn(time: t0, amountMinor: 500, currency: 'CNY', kind: TxnKind.income))).id;
+      await repo.db.update('transactions', {'goal_id': goal, 'excluded': 1}, where: 'id = ?', whereArgs: [paid]);
+      await repo.db.update('transactions', {'pair_id': into}, where: 'id = ?', whereArgs: [out]);
+      await repo.db.update('transactions', {'pair_id': out}, where: 'id = ?', whereArgs: [into]);
+      final payload = await BackupService(repo).serialize();
+
+      final db2 = await openAppDatabase(factory: databaseFactoryFfi, path: '${Directory.systemTemp.path}/restore_${DateTime.now().microsecondsSinceEpoch}.db');
+      final repo2 = Repository(db2);
+      await BackupService(repo2).restore(payload);
+      final rows = {for (final r in await db2.query('transactions')) r['id']: r};
+      expect(rows[paid]!['goal_id'], goal);
+      expect(rows[out]!['pair_id'], into);
+      expect((await db2.rawQuery('PRAGMA foreign_key_check')), isEmpty);
+      await db2.close();
+    });
   });
 }

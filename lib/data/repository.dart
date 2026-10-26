@@ -514,6 +514,9 @@ class Repository {
   /// Replaces all data with [data] (rows keyed by column name; unknown columns are ignored).
   Future<void> restoreAll(Map<String, List<Map<String, Object?>>> data, List<String> tables) async {
     await db.transaction((tx) async {
+      // References are checked at the commit, when every row is back: a purchase paid from a goal
+      // or a transfer pair may point at rows restored after it.
+      await tx.execute('PRAGMA defer_foreign_keys = ON');
       for (final t in tables.reversed) {
         await tx.delete(t);
       }

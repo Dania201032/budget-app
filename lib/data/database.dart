@@ -17,8 +17,8 @@ const schemaVersion = 14;
 
 /// Tables in dependency order (parents first) — used by backup/restore.
 const backupTables = [
-  'settings', 'accounts', 'categories', 'budgets', 'merchant_rules', 'rates', 'manual_rates',
-  'transactions', 'goals', 'debts', 'dismissed', 'recurring', 'people',
+  'settings', 'people', 'accounts', 'categories', 'budgets', 'merchant_rules', 'rates', 'manual_rates',
+  'goals', 'transactions', 'debts', 'dismissed', 'recurring',
 ];
 
 Future<void> _configure(Database db) => db.execute('PRAGMA foreign_keys = ON');
