@@ -27,6 +27,17 @@ class SyncService extends ChangeNotifier {
   bool busy = false;
   String? lastError;
 
+  /// What the sync running now is doing (null when idle).
+  SyncProgress? progress;
+
+  /// The last finished exchange: what came and went, what the cloud hasn't downloaded yet.
+  SyncReport? lastReport;
+
+  void _onProgress(SyncProgress p) {
+    progress = p;
+    notifyListeners();
+  }
+
   /// When changes last actually went to or came from another device — not just a look at the folder.
   DateTime? lastSync;
 
@@ -138,14 +149,16 @@ class SyncService extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final r = await SyncEngine(repo.db, folder, cipher, device, person: person, personCipher: personCipher)
+      final r = await SyncEngine(repo.db, folder, cipher, device, person: person, personCipher: personCipher, onProgress: _onProgress)
           .enable(wipe: wipe, beforeTake: beforeTake, beforeSend: beforeSend);
       lastCheck = DateTime.now();
       await _readTimes();
       lastError = null;
+      lastReport = r;
       return r;
     } finally {
       busy = false;
+      progress = null;
       notifyListeners();
     }
   }
@@ -167,6 +180,7 @@ class SyncService extends ChangeNotifier {
     lastCheck = null;
     otherDeviceSeen = null;
     lastError = null;
+    lastReport = null;
     notifyListeners();
   }
 
@@ -176,10 +190,15 @@ class SyncService extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final r = await SyncEngine(repo.db, _folder!, _cipher!, _device!, person: person, personCipher: personCipher).run();
+      final r = await SyncEngine(repo.db, _folder!, _cipher!, _device!, person: person, personCipher: personCipher, onProgress: _onProgress).run();
       lastCheck = DateTime.now();
       await _readTimes();
       lastError = null;
+      // A look that found nothing new keeps the last real exchange's numbers; files still
+      // downloading are always the current count.
+      lastReport = r.received > 0 || r.sent > 0 || lastReport == null
+          ? r
+          : SyncReport(lastReport!.received, lastReport!.sent, pending: r.pending, alone: lastReport!.alone);
       return r;
     } catch (e) {
       debugPrint('Sync failed: $e');
@@ -188,6 +207,7 @@ class SyncService extends ChangeNotifier {
       return null;
     } finally {
       busy = false;
+      progress = null;
       notifyListeners();
     }
   }

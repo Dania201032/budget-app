@@ -15,6 +15,7 @@ import 'household_screen.dart';
 import 'ledger.dart';
 import 'lock_screen.dart';
 import 'plus_screen.dart';
+import 'sync_progress.dart';
 
 /// Settings → Sync: the phone and the computer share their data through a Google Drive folder.
 class SyncScreen extends StatelessWidget {
@@ -58,6 +59,17 @@ class SyncScreen extends StatelessWidget {
               value: sync.lastSync == null ? tr('never') : DateFormat('dd.MM HH:mm', intlLocale).format(sync.lastSync!),
               hint: sync.lastError == null ? null : tr('sync_error', [sync.lastError]),
             ),
+            if (syncStatusNote(sync) case final note?)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (sync.busy && sync.progress != null && sync.progress!.total > 0) ...[
+                    LinearProgressIndicator(value: (sync.progress!.done / sync.progress!.total).clamp(0.0, 1.0)),
+                    const SizedBox(height: 6),
+                  ],
+                  Text(note, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+                ]),
+              ),
             if (state.syncPaused)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -142,27 +154,13 @@ class SyncScreen extends StatelessWidget {
 
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        content: Row(children: [
-          const CircularProgressIndicator(),
-          const SizedBox(width: 20),
-          Expanded(child: Text(tr('sync_working'))),
-        ]),
-      ),
-    );
     try {
-      final r = await state.connectSync(folder, password, kind: kind, location: location);
-      nav.pop();
-      messenger.showSnackBar(SnackBar(content: Text(tr('sync_done', [r.received, r.sent]))));
+      final r = await runWithSyncProgress(context, state.sync, () => state.connectSync(folder, password, kind: kind, location: location));
+      if (context.mounted) await showSyncResult(context, r);
       if (closeWhenJoined) nav.pop(true);
     } on WrongSyncPassword {
-      nav.pop();
       messenger.showSnackBar(SnackBar(content: Text(tr('sync_wrong_password'))));
     } catch (e) {
-      nav.pop();
       messenger.showSnackBar(SnackBar(content: Text(tr('sync_error', ['$e']))));
     }
   }

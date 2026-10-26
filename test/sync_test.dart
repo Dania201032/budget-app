@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:budget_app/data/database.dart';
 import 'package:budget_app/data/models.dart';
@@ -160,4 +161,40 @@ void main() {
     expect(await again.open(sealed), [1, 2, 3]);
     expect(() => SyncEngine.openGroup(group, 'wrong'), throwsA(isA<WrongSyncPassword>()));
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('progress and the report: the first device alone, the files the cloud still downloads', () async {
+    await phone.insertTxn(expense(4500, await food(phone), merchant: 'Lanzhou noodles'));
+    final steps = <SyncStage>[];
+    final first = await SyncEngine(phone.db, folder, cipher, 'aaaa0001', onProgress: (p) => steps.add(p.stage)).enable();
+    expect(first.alone, isTrue, reason: 'nobody else in the folder yet');
+    expect(first.sent, greaterThan(0));
+    expect(steps, contains(SyncStage.send));
+
+    // The computer joins while the cloud app still downloads the phone's files.
+    final slow = _Downloading('${tmp.path}/drive')..notYet.addAll(await folder.list());
+    final seen = <SyncProgress>[];
+    final joined = await SyncEngine(pc.db, slow, cipher, 'bbbb0002', onProgress: seen.add).enable();
+    expect(joined.alone, isFalse);
+    expect(joined.pending, greaterThan(0));
+    expect(await all(pc), isEmpty);
+
+    // Downloaded: the next look takes them, and says how far it got.
+    slow.notYet.clear();
+    seen.clear();
+    final later = await SyncEngine(pc.db, slow, cipher, 'bbbb0002', onProgress: seen.add).run();
+    expect(later.pending, 0);
+    expect(later.received, greaterThan(0));
+    expect(seen.last.stage, SyncStage.receive);
+    expect(seen.last.done, seen.last.total);
+    expect((await all(pc)).single.merchant, 'Lanzhou noodles');
+  });
+}
+
+/// A cloud folder whose app has listed some files but not downloaded them yet.
+class _Downloading extends IoSyncFolder {
+  _Downloading(super.path);
+  final notYet = <String>{};
+
+  @override
+  Future<Uint8List?> read(String name) async => notYet.contains(name) ? null : super.read(name);
 }

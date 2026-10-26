@@ -18,6 +18,7 @@ import 'home_screen.dart' show editBudgetDialog;
 import 'ledger.dart';
 import 'lock_screen.dart';
 import 'plus_screen.dart';
+import 'sync_progress.dart';
 import 'widgets.dart';
 
 /// Settings → Shared budget: setting one up (the four questions), joining one, and once in it,
@@ -245,18 +246,21 @@ Future<(SyncFolder, String, String)?> _pickFolder() async {
   return picked == null ? null : (SafSyncFolder(picked.$1, picked.$2), 'saf', picked.$1);
 }
 
-Future<T?> _working<T>(BuildContext context, Future<T> Function() work) async {
+/// [sync]: the work connects sync — its steps are shown instead of a bare spinner.
+Future<T?> _working<T>(BuildContext context, Future<T> Function() work, {SyncService? sync}) async {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => PopScope(
       canPop: false,
       child: AlertDialog(
-        content: Row(children: [
-          const CircularProgressIndicator(),
-          const SizedBox(width: 20),
-          Expanded(child: Text(tr('sync_working'))),
-        ]),
+        content: sync != null
+            ? SyncProgressView(sync)
+            : Row(children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Expanded(child: Text(tr('sync_working'))),
+              ]),
       ),
     ),
   );
@@ -384,7 +388,7 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
           location: location,
         );
         await state.syncNow();
-      });
+      }, sync: state.sync);
       if (mounted) setState(() => _done = true);
     } on FolderInUse {
       setState(() => _error = tr('hh_folder_used'));
@@ -624,7 +628,7 @@ class _HouseholdJoinScreenState extends State<HouseholdJoinScreen> {
             password: _password!,
             kind: kind,
             location: location,
-          ));
+          ), sync: state.sync);
       if (mounted) setState(() => _done = true);
     } on WrongSyncPassword {
       setState(() => _error = tr('hh_personal_pw_wrong'));

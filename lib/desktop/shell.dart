@@ -13,6 +13,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../ui/ledger.dart';
 import '../ui/search_screen.dart';
+import '../ui/sync_progress.dart' show describe, syncStatusNote;
 import '../ui/txn_editor.dart';
 import 'analytics_page.dart';
 import 'desk_data.dart';
@@ -445,7 +446,7 @@ class _SyncStatusState extends State<SyncStatus> {
         if (!sync.enabled) {
           line = tr('d_sync_off');
         } else if (sync.busy) {
-          line = tr('d_syncing');
+          line = sync.progress == null ? tr('d_syncing') : describe(sync.progress!);
         } else if (sync.lastError != null) {
           line = tr('d_sync_failed');
           warn = true;
@@ -453,6 +454,9 @@ class _SyncStatusState extends State<SyncStatus> {
           line = sync.lastSync == null ? tr('d_sync_never') : tr('d_sync_ago', [whenText(sync.lastSync!)]);
         }
         if (sync.enabled && sync.otherDeviceSeen != null) second = tr('d_phone_seen', [whenText(sync.otherDeviceSeen!)]);
+        // The cloud still bringing the phone's files, or nobody else in the folder yet.
+        final note = sync.busy ? null : syncStatusNote(sync);
+        if (note != null) second = note;
         final details = [
           if (sync.lastSync != null) tr('d_sync_ago', [whenText(sync.lastSync!)]),
           if (sync.otherDeviceSeen != null) tr('d_phone_seen', [whenText(sync.otherDeviceSeen!)]),

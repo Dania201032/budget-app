@@ -15,7 +15,28 @@ class SyncReport {
   /// Changes taken from other devices / sent to them.
   final int received;
   final int sent;
-  const SyncReport(this.received, this.sent);
+
+  /// Other devices' files the cloud app hasn't downloaded yet (taken on a later look).
+  final int pending;
+
+  /// No other device has left anything in the folder yet: this is the first one.
+  final bool alone;
+  const SyncReport(this.received, this.sent, {this.pending = 0, this.alone = false});
+}
+
+/// What a sync is doing right now, for the screens: a slow first sync must not look stuck.
+enum SyncStage { prepare, send, receive }
+
+class SyncProgress {
+  final SyncStage stage;
+
+  /// Rows looked at (prepare) or files written (send) / read (receive), of [total].
+  final int done;
+  final int total;
+
+  /// Changes taken in so far (receive).
+  final int changes;
+  const SyncProgress(this.stage, this.done, this.total, {this.changes = 0});
 }
 
 /// Phone ⇄ computer sync without a server, through a shared cloud folder.
@@ -45,7 +66,10 @@ class SyncEngine {
   final String? person;
   final SyncCipher? personCipher;
 
-  SyncEngine(this.db, this.folder, this.cipher, this.device, {this.person, this.personCipher});
+  /// Told as the work goes (rows prepared, files written and read).
+  final void Function(SyncProgress)? onProgress;
+
+  SyncEngine(this.db, this.folder, this.cipher, this.device, {this.person, this.personCipher, this.onProgress});
 
   static String newDeviceId() {
     final r = Random.secure();
@@ -100,9 +124,10 @@ class SyncEngine {
         }
       }
     });
+    var taken = 0;
     if (joining) {
       await beforeTake?.call();
-      await _import();
+      taken = (await _import()).$1;
       await beforeSend();
     }
     await db.transaction((txn) async {
@@ -127,7 +152,8 @@ class SyncEngine {
       }
       await txn.update('sync_state', {'tracking': 1});
     });
-    return run();
+    final r = await run();
+    return SyncReport(r.received + taken, r.sent, pending: r.pending, alone: others.isEmpty);
   }
 
   /// What a shared budget's folder holds, read without changing anything here: its people
@@ -169,8 +195,8 @@ class SyncEngine {
   /// overwrite them.
   Future<SyncReport> run() async {
     final sent = await _export();
-    final received = await _import();
-    return SyncReport(received, sent);
+    final (received, pending) = await _import();
+    return SyncReport(received, sent, pending: pending);
   }
 
   // --- Sending ---
@@ -183,7 +209,9 @@ class SyncEngine {
     // The last change of each row; a row changed ten times travels once, as it is now.
     final latest = <String, Map<String, Object?>>{};
     final hidden = await _hiddenAccounts();
+    var looked = 0;
     for (final o in out) {
+      if (++looked % 250 == 0) onProgress?.call(SyncProgress(SyncStage.prepare, looked, out.length));
       final t = syncTable(o['tbl'] as String);
       var key = o['rkey'] as String?;
       Map<String, Object?>? row;
@@ -223,12 +251,15 @@ class SyncEngine {
 
     final records = latest.values.toList();
     var seq = int.tryParse(await _setting('sync_seq') ?? '') ?? 0;
+    final files = (records.length + chunk - 1) ~/ chunk;
+    onProgress?.call(SyncProgress(SyncStage.send, 0, files));
     for (var i = 0; i < records.length; i += chunk) {
       final part = records.sublist(i, min(i + chunk, records.length));
       seq++;
       final body = jsonEncode({'v': 1, 'device': device, 'seq': seq, 'records': part});
       await folder.write(fileName(device, seq), await cipher.seal(utf8.encode(body)));
       await _setSetting('sync_seq', '$seq');
+      onProgress?.call(SyncProgress(SyncStage.send, i ~/ chunk + 1, files));
     }
     await db.transaction((txn) async {
       for (final r in records) {
@@ -277,7 +308,8 @@ class SyncEngine {
 
   // --- Receiving ---
 
-  Future<int> _import() async {
+  /// (changes taken, files not downloaded yet).
+  Future<(int, int)> _import() async {
     final peers = {
       for (final r in await db.query('sync_peers')) r['device'] as String: r['seq'] as int,
     };
@@ -290,10 +322,12 @@ class SyncEngine {
     }
     files.sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
 
-    var applied = 0;
+    var applied = 0, read = 0;
+    if (files.isNotEmpty) onProgress?.call(SyncProgress(SyncStage.receive, 0, files.length));
     for (final (dev, seq, name) in files) {
       final data = await folder.read(name);
       if (data == null) break; // not downloaded yet: next time, in order
+      read++;
       final plain = await cipher.open(data);
       if (plain != null) {
         final body = jsonDecode(utf8.decode(plain)) as Map<String, dynamic>;
@@ -302,9 +336,10 @@ class SyncEngine {
       }
       // A damaged file is skipped for good rather than blocking the ones after it.
       await db.insert('sync_peers', {'device': dev, 'seq': seq}, conflictAlgorithm: ConflictAlgorithm.replace);
+      onProgress?.call(SyncProgress(SyncStage.receive, read, files.length, changes: applied));
     }
-    if (files.isNotEmpty) await _setSetting('sync_last', '${DateTime.now().millisecondsSinceEpoch}');
-    return applied;
+    if (read > 0) await _setSetting('sync_last', '${DateTime.now().millisecondsSinceEpoch}');
+    return (applied, files.length - read);
   }
 
   Future<int> _apply(List<Map<String, dynamic>> records, String dev) async {
