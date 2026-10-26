@@ -71,9 +71,11 @@ class HouseholdInvite {
 }
 
 /// Opens a shared budget's folder with its password. Throws [WrongSyncPassword].
-Future<HouseholdInvite> readInvite(SyncFolder folder, String password) async {
+/// [sync]: told when the password is checked and how far the reading got (for the progress view).
+Future<HouseholdInvite> readInvite(SyncFolder folder, String password, {SyncService? sync}) async {
   final cipher = await SyncEngine.openGroup(folder, password);
-  final (people, setup) = await SyncEngine.peek(folder, cipher);
+  sync?.passwordOk();
+  final (people, setup) = await SyncEngine.peek(folder, cipher, onProgress: sync?.report);
   return HouseholdInvite(
     cipher,
     people,

@@ -25,7 +25,8 @@ class SyncReport {
 }
 
 /// What a sync is doing right now, for the screens: a slow first sync must not look stuck.
-enum SyncStage { prepare, send, receive }
+/// look: reading what the folder holds before joining (a shared budget's people and setup).
+enum SyncStage { look, prepare, send, receive }
 
 class SyncProgress {
   final SyncStage stage;
@@ -158,11 +159,15 @@ class SyncEngine {
 
   /// What a shared budget's folder holds, read without changing anything here: its people
   /// (uid -> name) and its setup (the "household" setting), for the questions before joining.
-  static Future<(Map<String, String>, String?)> peek(SyncFolder folder, SyncCipher cipher) async {
+  static Future<(Map<String, String>, String?)> peek(SyncFolder folder, SyncCipher cipher,
+      {void Function(SyncProgress)? onProgress}) async {
     final people = <String, (int, String?)>{};
     (int, String?)? household;
-    for (final name in await folder.list()) {
-      if (!_fileRe.hasMatch(name)) continue;
+    final names = (await folder.list()).where(_fileRe.hasMatch).toList();
+    var done = 0;
+    onProgress?.call(SyncProgress(SyncStage.look, 0, names.length));
+    for (final name in names) {
+      onProgress?.call(SyncProgress(SyncStage.look, ++done, names.length));
       final data = await folder.read(name);
       final plain = data == null ? null : await cipher.open(data);
       if (plain == null) continue;

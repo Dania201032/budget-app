@@ -579,9 +579,12 @@ class _HouseholdJoinScreenState extends State<HouseholdJoinScreen> {
     if (f == null || !mounted) return;
     final password = await askText(context, title: tr('hh_group_pw'), hint: tr('hh_group_pw_enter'), obscure: true);
     if (password == null || password.isEmpty || !mounted) return;
-    final repo = context.read<AppState>().repo;
+    final state = context.read<AppState>();
+    final repo = state.repo;
     try {
-      final invite = await _working(context, () => readInvite(f.$1, password));
+      state.sync.beginConnect();
+      final invite = await _working(context, () => readInvite(f.$1, password, sync: state.sync), sync: state.sync)
+          .whenComplete(state.sync.endConnect);
       if (invite == null || !mounted) return;
       if (invite.isPlainSync) {
         setState(() => _error = tr('hh_not_household'));

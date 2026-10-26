@@ -33,6 +33,30 @@ class SyncService extends ChangeNotifier {
   /// The last finished exchange: what came and went, what the cloud hasn't downloaded yet.
   SyncReport? lastReport;
 
+  /// While connecting: false until the folder's password is checked, then true; null otherwise.
+  bool? passwordChecked;
+
+  /// A connection starts: the progress view shows the password being checked.
+  void beginConnect() {
+    passwordChecked = false;
+    progress = null;
+    notifyListeners();
+  }
+
+  void passwordOk() {
+    passwordChecked = true;
+    notifyListeners();
+  }
+
+  void endConnect() {
+    passwordChecked = null;
+    progress = null;
+    notifyListeners();
+  }
+
+  /// Progress of work done outside the engine's runs (reading a shared budget's folder).
+  void report(SyncProgress p) => _onProgress(p);
+
   void _onProgress(SyncProgress p) {
     progress = p;
     notifyListeners();
@@ -137,6 +161,7 @@ class SyncService extends ChangeNotifier {
       Future<void> Function()? beforeTake,
       Future<void> Function()? beforeSend}) async {
     final cipher = await SyncEngine.openGroup(folder, password);
+    if (passwordChecked == false) passwordOk();
     final device = await repo.setting('sync_device') ?? SyncEngine.newDeviceId();
     await repo.setSetting('sync_device', device);
     await repo.setSetting('sync_kind', kind);

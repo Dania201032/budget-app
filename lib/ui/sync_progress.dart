@@ -40,9 +40,11 @@ class _SyncProgressViewState extends State<SyncProgressView> {
           const SizedBox(height: 12),
           if (widget.connecting) ...[
             _line(context, true, tr('syp_folder')),
-            _line(context, true, tr('syp_password')),
+            widget.sync.passwordChecked == false
+                ? _line(context, false, tr('syp_password_check'))
+                : _line(context, true, tr('syp_password')),
           ],
-          if (p == null) _line(context, false, tr('syp_check')),
+          if (p == null && widget.sync.passwordChecked != false) _line(context, false, tr('syp_check')),
           for (final s in _seen) _line(context, s != p?.stage, s == p?.stage ? describe(p!) : tr('syp_${s.name}_done')),
           if (p != null && p.total > 0) ...[
             const SizedBox(height: 8),

@@ -125,44 +125,48 @@ class SyncScreen extends StatelessWidget {
     if (!context.mounted) return;
     final password = await _askPassword(context, newGroup: !exists);
     if (password == null || !context.mounted) return;
-    // A shared budget's folder is joined as a person (Settings → Shared budget), not as a plain device.
-    if (exists) {
-      try {
-        final invite = await readInvite(folder, password);
-        if (!context.mounted) return;
-        if (!invite.isPlainSync) {
-          final go = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              content: Text(tr('hh_use_join')),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('hh_join'))),
-              ],
-            ),
-          );
-          if (go == true && context.mounted) {
-            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HouseholdJoinScreen()));
-          }
-          return;
-        }
-      } on WrongSyncPassword {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('sync_wrong_password'))));
-        return;
-      }
-    }
 
+    // From here on every step shows: checking the password, reading the folder, sending,
+    // receiving — a first sync takes minutes and must not look like nothing happens.
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
+    final sync = state.sync;
+    sync.beginConnect();
+    final SyncReport? r;
     try {
-      final r = await runWithSyncProgress(context, state.sync, () => state.connectSync(folder, password, kind: kind, location: location));
-      if (context.mounted) await showSyncResult(context, r);
-      if (closeWhenJoined) nav.pop(true);
+      r = await runWithSyncProgress(context, sync, () async {
+        // A shared budget's folder is joined as a person (Settings → Shared budget), not as a plain device.
+        if (exists && !(await readInvite(folder, password, sync: sync)).isPlainSync) return null;
+        return state.connectSync(folder, password, kind: kind, location: location);
+      });
     } on WrongSyncPassword {
       messenger.showSnackBar(SnackBar(content: Text(tr('sync_wrong_password'))));
+      return;
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(tr('sync_error', ['$e']))));
+      return;
+    } finally {
+      sync.endConnect();
     }
+    if (!context.mounted) return;
+    if (r == null) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          content: Text(tr('hh_use_join')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('hh_join'))),
+          ],
+        ),
+      );
+      if (go == true && context.mounted) {
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HouseholdJoinScreen()));
+      }
+      return;
+    }
+    await showSyncResult(context, r);
+    if (closeWhenJoined) nav.pop(true);
   }
 
   /// A new folder: the password twice; a folder another device already uses: its password once.
