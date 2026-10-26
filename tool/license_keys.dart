@@ -1,4 +1,4 @@
-// Personal keys to "Budget Plus" (for friends, testers): signed with the developer's private key,
+// Personal keys to "Saldo Plus" (for friends, testers): signed with the developer's private key,
 // checked by the app offline (lib/premium/license.dart). The private key never goes into the repo.
 //
 //   dart run tool/license_keys.dart generate              (once: makes the key pair)

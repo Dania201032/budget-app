@@ -204,7 +204,7 @@ const _deNl = <String, List<String>>{
   'lock_enter_pin': ['PIN eingeben', 'Voer uw pincode in'],
   'lock_wrong': ['Falsche PIN', 'Verkeerde pincode'],
   'lock_wait': ['Zu viele Versuche – {0} s warten', 'Te veel pogingen – wacht {0} s'],
-  'lock_reason': ['Budget öffnen', 'Budget openen'],
+  'lock_reason': ['Saldo öffnen', 'Saldo openen'],
   'lock_new_pin': ['Neue PIN', 'Nieuwe pincode'],
   'lock_repeat_pin': ['PIN wiederholen', 'Herhaal de pincode'],
   'lock_current_pin': ['Aktuelle PIN', 'Huidige pincode'],
@@ -457,9 +457,9 @@ const _deNl = <String, List<String>>{
     'De app leest alleen schermen met het betaalresultaat en transactieoverzichten in bank-apps, Alipay en WeChat, en betaal- en bankmeldingen. Chats en andere apps worden niet gelezen; de gegevens blijven op de telefoon.',
   ],
   'capture_step1': ['Zahlungsbildschirm lesen', 'Het betaalscherm lezen'],
-  'capture_step1_sub': ['Bedienungshilfen → Installierte Apps → Budget → einschalten', 'Toegankelijkheid → Geïnstalleerde apps → Budget → aanzetten'],
+  'capture_step1_sub': ['Bedienungshilfen → Installierte Apps → Saldo → einschalten', 'Toegankelijkheid → Geïnstalleerde apps → Saldo → aanzetten'],
   'capture_step2': ['Zugriff auf Benachrichtigungen', 'Toegang tot meldingen'],
-  'capture_step2_sub': ['Benachrichtigungen lesen, beantworten & steuern → Budget → Zulassen', 'Meldingen lezen, beantwoorden en beheren → Budget → Toestaan'],
+  'capture_step2_sub': ['Benachrichtigungen lesen, beantworten & steuern → Saldo → Zulassen', 'Meldingen lezen, beantwoorden en beheren → Saldo → Toestaan'],
   'capture_step3': ['„Erfasst: …“ anzeigen', '‘Vastgelegd: …’ tonen'],
   'capture_step3_sub': ['Benachrichtigungen für die App erlauben', 'Meldingen voor de app toestaan'],
   'restricted_hint': [
@@ -828,7 +828,7 @@ const _deNl = <String, List<String>>{
   'w_summary': ['Übersicht', 'Overzicht'],
   'w_quick': ['Schnell erfassen', 'Snel toevoegen'],
   'w_pin_unsupported': [
-    'Dieser Startbildschirm kann keine Widgets aus Apps hinzufügen: lange auf eine freie Stelle drücken → Widgets → Budget',
+    'Dieser Startbildschirm kann keine Widgets aus Apps hinzufügen: lange auf eine freie Stelle drücken → Widgets → Saldo',
     'Dit startscherm kan geen widgets vanuit apps toevoegen: houd een lege plek ingedrukt → Widgets → Budget',
   ],
 };

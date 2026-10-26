@@ -31,7 +31,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1200, 820);
-  if (!window.Create(L"Budget", origin, size)) {
+  if (!window.Create(L"\u0421\u0430\u043b\u044c\u0434\u043e", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

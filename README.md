@@ -1,4 +1,4 @@
-# Бюджет — личные финансы, которые остаются на ваших устройствах
+# Сальдо — личные финансы, которые остаются на ваших устройствах
 
 [English below](#english)
 
@@ -10,7 +10,7 @@
 
 ## Скачать
 
-**[⬇ Последняя версия для Android (APK)](../../releases/latest)** — файл `Budget-….apk` в разделе «Assets».
+**[⬇ Последняя версия для Android (APK)](../../releases/latest)** — файл `Saldo-….apk` в разделе «Assets».
 
 1. Скачайте APK на телефон и откройте его; разрешите установку из этого источника, если Android спросит.
 2. При первом запуске выберите страну и язык — приложение откроется пустым, без чьих-либо данных.
@@ -25,7 +25,7 @@ APK собирает **GitHub**, а не разработчик: при выпу
 которое разработчик не может. Проверка одной командой ([GitHub CLI](https://cli.github.com)):
 
 ```
-gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app
+gh attestation verify Saldo-0.10.1.apk --repo Dania201032/saldo
 ```
 
 Ответ «Verification succeeded» означает: этот файл собран GitHub из кода этого репозитория. Там же, в описании выпуска,
@@ -33,7 +33,7 @@ gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app
 
 ### Версия для компьютера (Windows)
 
-В том же выпуске — архив `Budget-…-windows.zip`. Распакуйте его в любую папку и запустите `Budget.exe`.
+В том же выпуске — архив `Saldo-…-windows.zip`. Распакуйте его в любую папку и запустите `Saldo.exe`.
 Windows может показать «Windows защитил ваш компьютер» (у программы нет платной подписи Microsoft): нажмите
 «Подробнее» → «Выполнить в любом случае». Проверка происхождения — та же команда `gh attestation verify` для zip-файла.
 
@@ -107,20 +107,20 @@ flutter build apk --release
 ---
 
 <a id="english"></a>
-# Budget — personal finance that stays on your phone
+# Saldo — personal finance that stays on your phone
 
 A spending and income tracker: daily limit, budget, savings goals, a "how long will my money last" forecast, and
 automatic recording of Alipay, WeChat and bank payments (Russia, Kazakhstan, Germany, the Netherlands). Android; iPhone in progress.
 
 This repository is public so that anyone can check for themselves: **the app does not collect or send your data.**
 
-**[⬇ Download the latest Android APK](../../releases/latest)** (`Budget-….apk` under "Assets"). It starts empty: pick a
+**[⬇ Download the latest Android APK](../../releases/latest)** (`Saldo-….apk` under "Assets"). It starts empty: pick a
 country and a language on the first start.
 
 The APK is **built by GitHub from this repository's code** ([workflow](.github/workflows/release.yml),
 [build logs](../../actions)), not on the developer's computer, and every file gets a signed build provenance
 attestation. Check it with [GitHub CLI](https://cli.github.com):
-`gh attestation verify Budget-0.10.1.apk --repo Dania201032/budget-app` → "Verification succeeded".
+`gh attestation verify Saldo-0.10.1.apk --repo Dania201032/saldo` → "Verification succeeded".
 
 - **Data stays on the phone.** No server, no accounts, no ads, no analytics libraries ([`pubspec.yaml`](pubspec.yaml)).
 - **The database is encrypted** (SQLCipher, AES-256) with a random key kept in the Android Keystore.
@@ -131,7 +131,7 @@ attestation. Check it with [GitHub CLI](https://cli.github.com):
   bank apps and Google Wallet ([`payment_accessibility.xml`](android/app/src/main/res/xml/payment_accessibility.xml));
   only the found operation (amount, date, payee) is kept. Chats, passwords, contacts and other apps are never read.
 
-**Windows and sync:** the release also has `Budget-…-windows.zip` (unzip, run `Budget.exe`; Windows SmartScreen may ask
+**Windows and sync:** the release also has `Saldo-…-windows.zip` (unzip, run `Saldo.exe`; Windows SmartScreen may ask
 to confirm — the app has no paid Microsoft signature). The phone and the computer sync **without a server**, through a
 folder in your own Google Drive: each device writes its changes there as files encrypted with your sync password
 (PBKDF2 + AES-256-GCM) and reads the other's. The app itself doesn't go online for this — the Google Drive app uploads

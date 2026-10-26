@@ -1,4 +1,4 @@
-# Budget — Privacy Policy
+# Saldo — Privacy Policy
 
 _Effective [publication date]. Developer: [name], contact: [email]._
 

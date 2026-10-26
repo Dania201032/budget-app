@@ -7,7 +7,7 @@ import '../premium/premium.dart';
 import '../state/app_state.dart';
 import 'ledger.dart';
 
-/// Settings → Budget Plus: the status (trial, personal key, subscription), what Plus adds, a
+/// Settings → Saldo Plus: the status (trial, personal key, subscription), what Plus adds, a
 /// personal key, and buying it in the store the app came from.
 class PlusScreen extends StatelessWidget {
   const PlusScreen({super.key});
@@ -128,7 +128,7 @@ Future<bool> requirePlus(BuildContext context, PlusFeature feature) async {
   return state.plusAllows(feature);
 }
 
-/// The settings line under "Budget Plus": where it comes from, or what it would add.
+/// The settings line under "Saldo Plus": where it comes from, or what it would add.
 String plusTileHint(PlusStatus s) {
   final short = switch (s.source) {
     PlusSource.store => tr('plus_short_store'),

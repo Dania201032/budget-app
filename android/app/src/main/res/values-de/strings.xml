@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Budget</string>
-    <string name="accessibility_label">Budget: automatische Erfassung</string>
-    <string name="listener_label">Budget: Zahlungsbenachrichtigungen</string>
+    <string name="app_name">Saldo</string>
+    <string name="accessibility_label">Saldo: automatische Erfassung</string>
+    <string name="listener_label">Saldo: Zahlungsbenachrichtigungen</string>
     <string name="accessibility_description">Automatische Erfassung von Ausgaben: Die App liest nur Zahlungsergebnis-Bildschirme und Umsatzlisten in Banking-Apps, Alipay und WeChat (Betrag, Datum und Empfänger) und speichert die Buchungen auf dem Handy. Chats, Passwörter und andere Apps werden nicht gelesen, nichts wird für Sie angetippt, nichts wird ins Internet gesendet.</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">Monatskalender</string>

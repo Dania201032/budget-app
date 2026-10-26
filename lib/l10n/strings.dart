@@ -262,7 +262,7 @@ const _s = <String, List<String>>{
   'lock_enter_pin': ['Введите PIN-код', 'Enter your PIN', '输入 PIN 码', 'PIN-кодты енгізіңіз'],
   'lock_wrong': ['Неверный PIN-код', 'Wrong PIN', 'PIN 码错误', 'PIN-код қате'],
   'lock_wait': ['Слишком много попыток — подождите {0} с', 'Too many tries — wait {0} s', '尝试次数过多——请等待 {0} 秒', 'Тым көп әрекет — {0} с күтіңіз'],
-  'lock_reason': ['Открыть Бюджет', 'Open Budget', '打开预算', 'Бюджетті ашу'],
+  'lock_reason': ['Открыть Сальдо', 'Open Saldo', '打开 Saldo', 'Сальдоны ашу'],
   'lock_new_pin': ['Новый PIN-код', 'New PIN', '新 PIN 码', 'Жаңа PIN-код'],
   'lock_repeat_pin': ['Повторите PIN-код', 'Repeat the PIN', '再次输入 PIN 码', 'PIN-кодты қайталаңыз'],
   'lock_current_pin': ['Текущий PIN-код', 'Current PIN', '当前 PIN 码', 'Қазіргі PIN-код'],
@@ -613,9 +613,9 @@ const _s = <String, List<String>>{
     'Қосымша тек Alipay төлем нәтижесі экраны мен операциялар тізімін, WeChat төлем хабарламаларын және банк хабарламаларын оқиды. Хат алмасу мен басқа қосымшалар оқылмайды, деректер телефонда қалады.',
   ],
   'capture_step1': ['Чтение экрана оплаты', 'Reading the payment screen', '读取支付页面', 'Төлем экранын оқу'],
-  'capture_step1_sub': ['Accessibility → Installed apps → Бюджет → включить', 'Accessibility → Installed apps → Budget → turn on', '无障碍 → 已安装的应用 → 预算 → 开启', 'Accessibility → Installed apps → Бюджет → қосу'],
+  'capture_step1_sub': ['Accessibility → Installed apps → Сальдо → включить', 'Accessibility → Installed apps → Saldo → turn on', '无障碍 → 已安装的应用 → Saldo → 开启', 'Accessibility → Installed apps → Сальдо → қосу'],
   'capture_step2': ['Доступ к уведомлениям', 'Notification access', '通知访问权限', 'Хабарламаларға рұқсат'],
-  'capture_step2_sub': ['Notification read, reply & control → Бюджет → Allow', 'Notification read, reply & control → Budget → Allow', '通知读取 → 预算 → 允许', 'Notification read, reply & control → Бюджет → Allow'],
+  'capture_step2_sub': ['Notification read, reply & control → Сальдо → Allow', 'Notification read, reply & control → Saldo → Allow', '通知读取 → Saldo → 允许', 'Notification read, reply & control → Сальдо → Allow'],
   'capture_step3': ['Показывать «Записано: …»', 'Show “Recorded: …”', '显示“已记录：…”', '«Жазылды: …» көрсету'],
   'capture_step3_sub': ['Разрешить приложению уведомления', 'Allow notifications for the app', '允许应用发送通知', 'Қосымшаға хабарламаға рұқсат беру'],
   'restricted_hint': ['Переключатель серый? О приложении → ⋮ → Разрешить ограниченные настройки', 'Switch greyed out? App info → ⋮ → Allow restricted settings', '开关是灰色的？应用信息 → ⋮ → 允许受限制的设置', 'Ауыстырғыш сұр ма? Қосымша туралы → ⋮ → Шектеулі баптауларға рұқсат беру'],
@@ -1093,7 +1093,7 @@ const _s = <String, List<String>>{
   'w_calendar': ['Календарь месяца', 'Month calendar', '月历', 'Ай күнтізбесі'],
   'w_summary': ['Сводка', 'Summary', '概要', 'Шолу'],
   'w_quick': ['Быстрая запись', 'Quick add', '快速记账', 'Жылдам жазу'],
-  'w_pin_unsupported': ['Этот рабочий стол не умеет добавлять виджеты из приложения: зажмите пустое место → Виджеты → Бюджет', 'This launcher cannot add widgets from apps: long-press an empty spot → Widgets → Budget', '此桌面不支持从应用添加小组件：长按空白处 → 小组件 → 预算', 'Бұл жұмыс үстелі қолданбадан виджет қоса алмайды: бос жерді басып тұрыңыз → Виджеттер → Бюджет'],
+  'w_pin_unsupported': ['Этот рабочий стол не умеет добавлять виджеты из приложения: зажмите пустое место → Виджеты → Сальдо', 'This launcher cannot add widgets from apps: long-press an empty spot → Widgets → Saldo', '此桌面不支持从应用添加小组件：长按空白处 → 小组件 → Saldo', 'Бұл жұмыс үстелі қолданбадан виджет қоса алмайды: бос жерді басып тұрыңыз → Виджеттер → Сальдо'],
 };
 
 String _lang = 'ru';

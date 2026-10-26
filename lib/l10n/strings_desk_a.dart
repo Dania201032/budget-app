@@ -2,7 +2,7 @@ part of 'strings.dart';
 
 // Shell, navigation, Summary, hints.
 const _deskA = <String, List<String>>{
-  'd_app_name': ['Счёты', 'Ledger', '算盘', 'Есепшот', 'Rechenbrett', 'Telraam'],
+  'd_app_name': ['Сальдо', 'Saldo', 'Saldo', 'Сальдо', 'Saldo', 'Saldo'],
   'd_app_sub': ['для компьютера', 'for the computer', '电脑版', 'компьютерге', 'für den Computer', 'voor de computer'],
   'd_find_or_do': ['Найти или сделать…', 'Find or do…', '查找或操作…', 'Табу немесе орындау…', 'Suchen oder tun…', 'Zoeken of doen…'],
   'd_cmd_page': ['раздел', 'page', '页面', 'бөлім', 'Seite', 'pagina'],

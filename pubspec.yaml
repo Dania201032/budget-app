@@ -1,7 +1,7 @@
 name: budget_app
-description: "A new Flutter project."
+description: "Сальдо (Saldo): personal finance that stays on your devices."
 publish_to: 'none'
-version: 0.15.0+2053
+version: 0.16.0+2054
 
 environment:
   sdk: ^3.13.5

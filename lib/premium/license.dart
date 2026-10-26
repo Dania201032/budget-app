@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
-/// A personal key to Budget Plus (`BP1.<payload>.<signature>`): who it is for and until when,
+/// A personal key to Saldo Plus (`BP1.<payload>.<signature>`): who it is for and until when,
 /// signed by the developer (tool/license_keys.dart). Checked offline against [_publicKey].
 class PlusLicense {
   final String name;

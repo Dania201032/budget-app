@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Бюджет</string>
-    <string name="accessibility_label">Бюджет: шығысты автожазу</string>
-    <string name="listener_label">Бюджет: төлем хабарламалары</string>
+    <string name="app_name">Сальдо</string>
+    <string name="accessibility_label">Сальдо: шығысты автожазу</string>
+    <string name="listener_label">Сальдо: төлем хабарламалары</string>
     <string name="accessibility_description">Шығысты автожазу: қосымша Alipay, WeChat және банк қосымшаларындағы төлем нәтижесі экрандары мен операциялар тізімін (сома, күн және алушы) ғана оқып, операцияларды телефонда сақтайды. Хат алмасу, құпиясөздер мен басқа қосымшалар оқылмайды, сіз үшін ештеңе басылмайды және интернетке ештеңе жіберілмейді.</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">Ай күнтізбесі</string>

@@ -91,7 +91,7 @@ class BudgetApp extends StatelessWidget {
       builder: (context, look, _) => MaterialApp(
         // A new key rebuilds every screen when the language changes.
         key: ValueKey(lang),
-        title: switch (lang) { 'zh' => '预算', 'ru' || 'kk' => 'Бюджет', _ => 'Budget' },
+        title: switch (lang) { 'ru' || 'kk' => 'Сальдо', _ => 'Saldo' },
         debugShowCheckedModeBanner: false,
         theme: ledgerTheme(Brightness.light),
         darkTheme: ledgerTheme(Brightness.dark),

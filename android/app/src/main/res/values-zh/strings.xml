@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">预算</string>
-    <string name="accessibility_label">预算：自动记账</string>
-    <string name="listener_label">预算：付款通知</string>
+    <string name="app_name">Saldo</string>
+    <string name="accessibility_label">Saldo：自动记账</string>
+    <string name="listener_label">Saldo：付款通知</string>
     <string name="accessibility_description">自动记账：应用只读取支付宝、微信和银行应用中的支付结果页面及交易列表（金额、日期和对方），并把交易保存在手机上。不会读取聊天、密码和其他应用，不会替你点击任何内容，也不会向网络发送任何数据。</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">月历</string>

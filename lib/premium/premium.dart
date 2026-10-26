@@ -4,7 +4,7 @@ import '../data/repository.dart';
 import '../security/secure_store.dart';
 import 'license.dart';
 
-/// Budget Plus: what the subscription adds. Free stays a complete budget for one person on one
+/// Saldo Plus: what the subscription adds. Free stays a complete budget for one person on one
 /// phone; Plus is more devices, more people, more analysis. Nothing is ever locked away: when
 /// Plus ends, everything made with it stays visible, only its actions stop (sync pauses).
 enum PlusFeature { sync, household, statements, envelopes, netWorth, taxes, receipts }

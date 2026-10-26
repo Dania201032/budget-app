@@ -89,12 +89,14 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
+            // CompanyName and ProductName name the data folder (%APPDATA%\\Budget\\Budget) and the
+            // database key's entry: they stay "Budget" so the data survives the rename to Saldo.
             VALUE "CompanyName", "Budget" "\0"
-            VALUE "FileDescription", "Budget - personal finance" "\0"
+            VALUE "FileDescription", "Saldo - personal finance" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Budget" "\0"
+            VALUE "InternalName", "Saldo" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Budget.exe" "\0"
+            VALUE "OriginalFilename", "Saldo.exe" "\0"
             VALUE "ProductName", "Budget" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

@@ -26,7 +26,7 @@ class BunqClient {
 
   Map<String, String> _headers({String? token, String? body}) => {
         'Cache-Control': 'no-cache',
-        'User-Agent': 'Budget app',
+        'User-Agent': 'Saldo',
         'X-Bunq-Language': 'en_US',
         'X-Bunq-Region': 'nl_NL',
         'X-Bunq-Geolocation': '0 0 0 0 000',
@@ -67,7 +67,7 @@ class BunqClient {
       final r = await _call('POST', '/installation', json: {'client_public_key': rsaPublicPem(state.privateKey!)});
       state.installationToken = (_find<Map<String, dynamic>>(r, 'Token'))?['token'] as String?;
       await _call('POST', '/device-server', token: state.installationToken, json: {
-        'description': 'Budget app',
+        'description': 'Saldo',
         'secret': state.apiKey,
         'permitted_ips': ['*'],
       });

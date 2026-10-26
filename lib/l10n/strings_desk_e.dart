@@ -4,7 +4,7 @@ part of 'strings.dart';
 const _deskE = <String, List<String>>{
   'd_docs_sub': ['Отчёты, справки и таблицы из ваших данных', 'Reports, statements and tables from your data', '基于您数据的报告、证明和表格', 'Деректеріңізден есептер, анықтамалар, кестелер', 'Berichte, Nachweise und Tabellen aus Ihren Daten', 'Rapporten, overzichten en tabellen uit uw gegevens'],
   'd_open_folder': ['Открыть папку', 'Open folder', '打开文件夹', 'Қалтаны ашу', 'Ordner öffnen', 'Map openen'],
-  'd_folder_name': ['Бюджет', 'Budget', '预算', 'Бюджет', 'Budget', 'Budget'],
+  'd_folder_name': ['Сальдо', 'Saldo', 'Saldo', 'Сальдо', 'Saldo', 'Saldo'],
   'd_file_month': ['Отчёт {0}', 'Report {0}', '报告 {0}', 'Есеп {0}', 'Bericht {0}', 'Rapport {0}'],
   'd_excel_title': ['Excel-таблица', 'Excel workbook', 'Excel 表格', 'Excel кестесі', 'Excel-Tabelle', 'Excel-werkmap'],
   'd_excel_card': ['Конструктор: раскладка, листы, столбцы, подсветка, формулы, язык — всё кнопками, с живым предпросмотром.', 'Builder: layout, sheets, columns, highlights, formulas, language — all with buttons and a live preview.', '生成器：布局、工作表、列、高亮、公式、语言，全用按钮，实时预览。', 'Құрастырғыш: орналасу, парақ, баған, бөлектеу, формула, тіл — бәрі батырмамен, тікелей алдын ала қараумен.', 'Baukasten: Aufbau, Blätter, Spalten, Hervorhebung, Formeln, Sprache – alles per Klick mit Live-Vorschau.', 'Bouwer: indeling, bladen, kolommen, markering, formules, taal — alles met knoppen en live voorbeeld.'],

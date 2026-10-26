@@ -55,7 +55,7 @@ Future<void> _upgrade(Database db, int from, int to) async {
   // v12: investments and loans, the net worth's history, envelopes and tax marks travel too.
   if (from < 12) await _migrateV12(db);
   if (from < 13) await _migrateV13(db);
-  // v14: the note that someone in the shared budget has Budget Plus travels too.
+  // v14: the note that someone in the shared budget has Saldo Plus travels too.
   if (from < 14) await _migrateV12(db);
 }
 

@@ -43,7 +43,7 @@ class AppState extends ChangeNotifier {
   /// Phone ⇄ computer sync through a cloud folder (off until set up in Settings).
   final SyncService sync;
 
-  /// Budget Plus: trial, personal key or the store's subscription (lib/premium/).
+  /// Saldo Plus: trial, personal key or the store's subscription (lib/premium/).
   final Plus plus;
   PlusStatus plusStatus = const PlusStatus(PlusSource.trial);
   bool get isPlus => plusStatus.active;

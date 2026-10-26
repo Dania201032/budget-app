@@ -3,8 +3,8 @@ part of 'strings.dart';
 /// The shared budget's texts (lib/household/, lib/ui/household_screen.dart) and later additions
 /// in all six languages at once: [ru, en, zh, kk, de, nl].
 const _hh = <String, List<String>>{
-  // --- Budget Plus (lib/premium/, lib/ui/plus_screen.dart) ---
-  'plus_title': ['Бюджет Плюс', 'Budget Plus', '预算 Plus', 'Бюджет Плюс', 'Budget Plus', 'Budget Plus'],
+  // --- Saldo Plus (lib/premium/, lib/ui/plus_screen.dart) ---
+  'plus_title': ['Сальдо Плюс', 'Saldo Plus', 'Saldo Plus', 'Сальдо Плюс', 'Saldo Plus', 'Saldo Plus'],
   'plus_tile_sub_on': ['Включён: {0}', 'On: {0}', '已开启：{0}', 'Қосулы: {0}', 'Aktiv: {0}', 'Aan: {0}'],
   'plus_tile_sub_off': ['Синхронизация, бюджет на двоих, выписки и другое', 'Sync, a shared budget, statements and more',
       '同步、共同预算、账单导入等', 'Синхрондау, екеуге ортақ бюджет, үзінділер және т.б.', 'Sync, gemeinsames Budget, Kontoauszüge und mehr',
@@ -100,8 +100,8 @@ const _hh = <String, List<String>>{
     'Ihre Daten werden nie gesperrt: Endet Plus, bleibt alles damit Erstellte sichtbar, nur seine Aktionen stoppen (die Synchronisierung pausiert).',
     'Uw gegevens worden nooit vergrendeld: als Plus stopt, blijft alles wat ermee is gemaakt zichtbaar, alleen de acties stoppen (synchronisatie pauzeert).',
   ],
-  'plus_needed': ['«{0}» — в Бюджет Плюс', '"{0}" is part of Budget Plus', '“{0}”属于预算 Plus', '«{0}» — Бюджет Плюс құрамында',
-      '„{0}“ gehört zu Budget Plus', '"{0}" hoort bij Budget Plus'],
+  'plus_needed': ['«{0}» — в Сальдо Плюс', '"{0}" is part of Saldo Plus', '“{0}”属于 Saldo Plus', '«{0}» — Сальдо Плюс құрамында',
+      '„{0}“ gehört zu Saldo Plus', '"{0}" hoort bij Saldo Plus'],
   'plus_needed_sub': [
     'Пробный период закончился. Включите Плюс подпиской или ключом — всё, что уже есть, остаётся доступным.',
     'The trial has ended. Turn on Plus with a subscription or a key — everything you already have stays available.',
@@ -112,12 +112,12 @@ const _hh = <String, List<String>>{
   ],
   'plus_more': ['Подробнее', 'Learn more', '了解更多', 'Толығырақ', 'Mehr erfahren', 'Meer info'],
   'plus_sync_paused': [
-    'Синхронизация на паузе: закончился Бюджет Плюс. Данные на всех устройствах остаются как есть.',
-    'Sync is paused: Budget Plus has ended. The data on every device stays as it is.',
-    '同步已暂停：预算 Plus 已到期。各设备上的数据保持不变。',
-    'Синхрондау кідіртілді: Бюджет Плюс аяқталды. Барлық құрылғылардағы деректер сол күйінде қалады.',
-    'Synchronisierung pausiert: Budget Plus ist abgelaufen. Die Daten auf allen Geräten bleiben, wie sie sind.',
-    'Synchronisatie gepauzeerd: Budget Plus is afgelopen. De gegevens op elk apparaat blijven zoals ze zijn.',
+    'Синхронизация на паузе: закончился Сальдо Плюс. Данные на всех устройствах остаются как есть.',
+    'Sync is paused: Saldo Plus has ended. The data on every device stays as it is.',
+    '同步已暂停：Saldo Plus 已到期。各设备上的数据保持不变。',
+    'Синхрондау кідіртілді: Сальдо Плюс аяқталды. Барлық құрылғылардағы деректер сол күйінде қалады.',
+    'Synchronisierung pausiert: Saldo Plus ist abgelaufen. Die Daten auf allen Geräten bleiben, wie sie sind.',
+    'Synchronisatie gepauzeerd: Saldo Plus is afgelopen. De gegevens op elk apparaat blijven zoals ze zijn.',
   ],
   // --- Receipts (lib/capture/receipt.dart) ---
   'rc_scan': ['Чек: сфотографировать', 'Receipt: take a photo', '小票：拍照', 'Чек: суретке түсіру', 'Beleg: fotografieren', 'Bon: foto maken'],

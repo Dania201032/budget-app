@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Бюджет</string>
-    <string name="accessibility_label">Бюджет: автозапись трат</string>
-    <string name="listener_label">Бюджет: уведомления о платежах</string>
+    <string name="app_name">Сальдо</string>
+    <string name="accessibility_label">Сальдо: автозапись трат</string>
+    <string name="listener_label">Сальдо: уведомления о платежах</string>
     <string name="accessibility_description">Автозапись трат: приложение читает только экраны результата оплаты и списки операций в Alipay, WeChat и приложениях банков (сумму, дату и получателя) и сохраняет операции на телефоне. Переписка, пароли и другие приложения не читаются, ничего не нажимается за вас и не отправляется в интернет.</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">Календарь месяца</string>

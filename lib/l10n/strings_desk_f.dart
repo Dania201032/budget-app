@@ -102,7 +102,7 @@ const _deskF = <String, List<String>>{
   'd_backups_sub': ['сохранить или восстановить все данные', 'save or restore all data', '保存或恢复全部数据', 'барлық деректі сақтау не қалпына келтіру', 'alle Daten sichern oder wiederherstellen', 'alle gegevens opslaan of terugzetten'],
   'd_files': ['Отчёты и файлы', 'Reports & files', '报告与文件', 'Есептер мен файлдар', 'Berichte & Dateien', 'Rapporten & bestanden'],
   'd_docs_folder': ['Папка для документов', 'Documents folder', '文档文件夹', 'Құжаттар қалтасы', 'Dokumentordner', 'Documentenmap'],
-  'd_docs_folder_default': ['Документы \\ Бюджет', 'Documents \\ Budget', '文档 \\ 预算', 'Құжаттар \\ Бюджет', 'Dokumente \\ Budget', 'Documenten \\ Budget'],
+  'd_docs_folder_default': ['Документы \\ Сальдо', 'Documents \\ Saldo', '文档 \\ Saldo', 'Құжаттар \\ Сальдо', 'Dokumente \\ Saldo', 'Documenten \\ Saldo'],
   'd_change': ['Изменить', 'Change', '更改', 'Өзгерту', 'Ändern', 'Wijzigen'],
   'd_look': ['Внешний вид', 'Appearance', '外观', 'Сыртқы түр', 'Darstellung', 'Weergave'],
   'd_this_computer': ['Только на этом компьютере', 'This computer only', '仅此电脑', 'Тек осы компьютерде', 'Nur auf diesem Computer', 'Alleen op deze computer'],

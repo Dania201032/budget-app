@@ -24,8 +24,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "app.budget.budget_app"
+        // The store id. The Kotlin package (namespace) keeps its old name: nobody sees it.
+        applicationId = "app.saldo"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

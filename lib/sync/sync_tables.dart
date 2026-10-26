@@ -26,7 +26,7 @@ class SyncTable {
 /// "household" is the shared budget's setup; `pbudget:<person>` a person's own monthly limit;
 /// "desk_holdings" the investments, property and loans; "networth_history" the net worth by month;
 /// "envelopes" the envelope budgeting; "tax_tags" the tax marks of categories; "household_plus" that
-/// someone in the shared budget has Budget Plus (lib/premium/premium.dart).
+/// someone in the shared budget has Saldo Plus (lib/premium/premium.dart).
 const syncedSettings = [
   'base_currency', 'budget_enabled', 'default_budget_minor', 'default_budget_currency', 'daily_limit',
   'self_names', 'runway_config', 'country', 'household', 'desk_holdings', 'networth_history', 'envelopes', 'tax_tags',

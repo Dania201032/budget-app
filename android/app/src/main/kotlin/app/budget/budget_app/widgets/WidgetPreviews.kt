@@ -16,7 +16,7 @@ import java.util.Locale
  * design mock-ups, never the user's data), per language and light/dark, into
  * Android/data/<package>/files/previews. Those PNGs become the widget-picker previews
  * (res/drawable-*-nodpi/widget_preview_*). Run with:
- *   adb shell am broadcast -a app.budget.widget.RENDER_PREVIEWS -n app.budget.budget_app/.widgets.WidgetPreviewReceiver   (debug builds only)
+ *   adb shell am broadcast -a app.budget.widget.RENDER_PREVIEWS -n app.saldo/app.budget.budget_app.widgets.WidgetPreviewReceiver   (debug builds only)
  */
 object WidgetPreviews {
     private const val TAG = "BudgetWidgets"

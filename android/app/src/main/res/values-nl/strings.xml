@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Budget</string>
-    <string name="accessibility_label">Budget: automatisch vastleggen</string>
-    <string name="listener_label">Budget: betaalmeldingen</string>
+    <string name="app_name">Saldo</string>
+    <string name="accessibility_label">Saldo: automatisch vastleggen</string>
+    <string name="listener_label">Saldo: betaalmeldingen</string>
     <string name="accessibility_description">Automatisch uitgaven vastleggen: de app leest alleen schermen met het betaalresultaat en transactieoverzichten in bank-apps, Alipay en WeChat (bedrag, datum en ontvanger) en bewaart de transacties op de telefoon. Chats, wachtwoorden en andere apps worden niet gelezen, er wordt niets voor u aangetikt en niets naar internet gestuurd.</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">Maandkalender</string>

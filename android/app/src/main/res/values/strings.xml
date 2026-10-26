@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Budget</string>
-    <string name="accessibility_label">Budget: automatic recording</string>
-    <string name="listener_label">Budget: payment notifications</string>
+    <string name="app_name">Saldo</string>
+    <string name="accessibility_label">Saldo: automatic recording</string>
+    <string name="listener_label">Saldo: payment notifications</string>
     <string name="accessibility_description">Automatic expense recording: the app reads only payment result screens and operation lists in Alipay, WeChat and bank apps (amount, date and payee) and saves the operations on the phone. Chats, passwords and other apps are not read, nothing is tapped for you, nothing is sent to the internet.</string>
     <!-- Home-screen widgets -->
     <string name="widget_calendar_name">Month calendar</string>

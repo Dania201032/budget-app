@@ -3,7 +3,7 @@
 # (a zip), records a build provenance attestation for each that anyone can check, and attaches both
 # to the release of that tag.
 #
-#   gh attestation verify Budget-0.10.2.apk --repo <owner>/budget-app
+#   gh attestation verify Saldo-0.10.2.apk --repo <owner>/saldo
 name: Release
 
 on:
@@ -74,8 +74,8 @@ jobs:
           flutter build apk --release --target-platform android-arm64
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/Budget-$VERSION.apk"
-          echo "APK=dist/Budget-$VERSION.apk" >> "$GITHUB_ENV"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Saldo-$VERSION.apk"
+          echo "APK=dist/Saldo-$VERSION.apk" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Checksums
@@ -140,11 +140,11 @@ jobs:
           flutter build windows --release
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           APP=build/windows/x64/runner/Release
-          # The Visual C++ runtime next to Budget.exe, for computers that don't have it.
+          # The Visual C++ runtime next to Saldo.exe, for computers that don't have it.
           for dll in msvcp140.dll vcruntime140.dll vcruntime140_1.dll; do cp "/c/Windows/System32/$dll" "$APP/"; done
           mkdir -p dist
-          (cd "$APP" && 7z a -tzip "$GITHUB_WORKSPACE/dist/Budget-$VERSION-windows.zip" . > /dev/null)
-          echo "ZIP=dist/Budget-$VERSION-windows.zip" >> "$GITHUB_ENV"
+          (cd "$APP" && 7z a -tzip "$GITHUB_WORKSPACE/dist/Saldo-$VERSION-windows.zip" . > /dev/null)
+          echo "ZIP=dist/Saldo-$VERSION-windows.zip" >> "$GITHUB_ENV"
 
       - name: Build provenance attestation
         uses: actions/attest-build-provenance@v2
@@ -158,5 +158,5 @@ jobs:
           SHA=$(sha256sum "$ZIP" | cut -d' ' -f1)
           gh release upload "$TAG" "$ZIP" --clobber
           gh release view "$TAG" --json body --jq .body > notes.md
-          printf '\n---\n**Windows:** `%s` (распакуйте и запустите Budget.exe · unzip and run Budget.exe)\n- SHA-256: `%s`\n' "$(basename "$ZIP")" "$SHA" >> notes.md
+          printf '\n---\n**Windows:** `%s` (распакуйте и запустите Saldo.exe · unzip and run Saldo.exe)\n- SHA-256: `%s`\n' "$(basename "$ZIP")" "$SHA" >> notes.md
           gh release edit "$TAG" --notes-file notes.md
