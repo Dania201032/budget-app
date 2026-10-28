@@ -577,6 +577,12 @@ class Repository {
 
   // --- Transactions ---
 
+  /// The day of the first operation (the start of bookkeeping); null without any.
+  Future<DateTime?> firstTxnTime() async {
+    final v = Sqflite.firstIntValue(await db.rawQuery('SELECT MIN(ts) FROM transactions WHERE excluded = 0'));
+    return v == null ? null : DateTime.fromMillisecondsSinceEpoch(v);
+  }
+
   Future<List<Txn>> txnsBetween(DateTime from, DateTime to) async => (await db.query(
         'transactions',
         where: 'ts >= ? AND ts < ?',

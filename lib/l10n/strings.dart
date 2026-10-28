@@ -1031,15 +1031,15 @@ const _s = <String, List<String>>{
 
   // --- Sync between the phone and the computer ---
   'sync': ['Синхронизация', 'Sync', '同步', 'Синхрондау'],
-  'sync_sub_phone': ['С компьютером через Google Drive', 'With your computer via Google Drive', '通过 Google Drive 与电脑同步', 'Компьютермен Google Drive арқылы'],
-  'sync_sub_desktop': ['С телефоном через Google Drive', 'With your phone via Google Drive', '通过 Google Drive 与手机同步', 'Телефонмен Google Drive арқылы'],
+  'sync_sub_phone': ['С компьютером через ваше облако', 'With your computer via your own cloud', '通过您自己的云盘与电脑同步', 'Компьютермен өз бұлтыңыз арқылы'],
+  'sync_sub_desktop': ['С телефоном через ваше облако', 'With your phone via your own cloud', '通过您自己的云盘与手机同步', 'Телефонмен өз бұлтыңыз арқылы'],
   'sync_explain': [
-    'Телефон и компьютер обмениваются изменениями через папку в Google Drive — сервер не нужен. Файлы в папке зашифрованы паролем синхронизации: Google видит только непонятный набор байтов. На компьютере папка появится после установки программы «Google Drive для компьютера».',
-    'The phone and the computer exchange changes through a Google Drive folder — no server needed. The files are encrypted with the sync password: Google only sees meaningless bytes. On the computer the folder appears once “Google Drive for desktop” is installed.',
-    '手机和电脑通过 Google Drive 中的一个文件夹交换更改，无需服务器。文件用同步密码加密：Google 只能看到无意义的字节。在电脑上安装“Google Drive 桌面版”后即可看到该文件夹。',
-    'Телефон мен компьютер өзгерістерді Google Drive қалтасы арқылы алмасады — сервер қажет емес. Қалтадағы файлдар синхрондау құпия сөзімен шифрланған: Google тек түсініксіз байттарды көреді. Компьютерде қалта «Google Drive for desktop» бағдарламасын орнатқаннан кейін пайда болады.',
+    'Телефон и компьютер обмениваются изменениями через папку в вашем облаке (проверено с Google Drive) — нашего сервера нет. Файлы в папке зашифрованы паролем синхронизации: облако видит только непонятный набор байтов. На компьютере папка появится после установки программы облака, например «Google Drive для компьютера».',
+    'The phone and the computer exchange changes through a folder in your own cloud (tested with Google Drive) — there is no server of ours. The files are encrypted with the sync password: the cloud only sees meaningless bytes. On the computer the folder appears once the cloud\'s program is installed, e.g. “Google Drive for desktop”.',
+    '手机和电脑通过您自己云盘中的一个文件夹交换更改（已在 Google Drive 上测试），没有我们的服务器。文件用同步密码加密：云盘只能看到无意义的字节。在电脑上安装云盘程序（例如“Google Drive 桌面版”）后即可看到该文件夹。',
+    'Телефон мен компьютер өзгерістерді өз бұлтыңыздағы қалта арқылы алмасады (Google Drive-пен тексерілген) — біздің сервер жоқ. Қалтадағы файлдар синхрондау құпия сөзімен шифрланған: бұлт тек түсініксіз байттарды көреді. Компьютерде қалта бұлт бағдарламасын (мысалы, «Google Drive for desktop») орнатқаннан кейін пайда болады.',
   ],
-  'sync_choose_folder': ['Выбрать папку Google Drive', 'Choose a Google Drive folder', '选择 Google Drive 文件夹', 'Google Drive қалтасын таңдау'],
+  'sync_choose_folder': ['Выбрать папку в облаке', 'Choose a cloud folder', '选择云盘文件夹', 'Бұлттағы қалтаны таңдау'],
   'sync_password_new': ['Придумайте пароль синхронизации', 'Make up a sync password', '设置同步密码', 'Синхрондау құпия сөзін ойлап табыңыз'],
   'sync_password_new_sub': [
     'Его нужно будет ввести на втором устройстве. Сам пароль нигде не хранится — запишите его.',

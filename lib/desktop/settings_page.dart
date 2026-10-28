@@ -323,7 +323,7 @@ class _DeskSettingsPageState extends State<DeskSettingsPage> {
       ]),
       section('about', tr('d_about'), [
         row(tr('d_app_name'), tr('d_about_sub'), Wrap(spacing: 6, children: [
-          DeskButton(tr('d_check_updates'), onTap: () => openPath('https://github.com/Dania201032/budget-app/releases')),
+          DeskButton(tr('d_check_updates'), onTap: () => openPath('https://github.com/Dania201032/saldo/releases')),
         ])),
       ]),
     ]);

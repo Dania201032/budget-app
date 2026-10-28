@@ -780,13 +780,13 @@ const _deNl = <String, List<String>>{
   'settings_data': ['Daten', 'Gegevens'],
   'settings_general': ['Allgemein', 'Algemeen'],
   'sync': ['Synchronisierung', 'Synchronisatie'],
-  'sync_sub_phone': ['Mit dem Computer über Google Drive', 'Met de computer via Google Drive'],
-  'sync_sub_desktop': ['Mit dem Handy über Google Drive', 'Met de telefoon via Google Drive'],
+  'sync_sub_phone': ['Mit dem Computer über Ihre eigene Cloud', 'Met de computer via uw eigen cloud'],
+  'sync_sub_desktop': ['Mit dem Handy über Ihre eigene Cloud', 'Met de telefoon via uw eigen cloud'],
   'sync_explain': [
-    'Handy und Computer tauschen Änderungen über einen Ordner in Google Drive aus – ein Server ist nicht nötig. Die Dateien sind mit dem Sync-Passwort verschlüsselt: Google sieht nur sinnlose Bytes. Auf dem Computer erscheint der Ordner, sobald „Google Drive für den Desktop“ installiert ist.',
-    'Telefoon en computer wisselen wijzigingen uit via een map in Google Drive – een server is niet nodig. De bestanden zijn versleuteld met het synchronisatiewachtwoord: Google ziet alleen betekenisloze bytes. Op de computer verschijnt de map zodra ‘Google Drive voor desktop’ is geïnstalleerd.',
+    'Handy und Computer tauschen Änderungen über einen Ordner in Ihrer eigenen Cloud aus (getestet mit Google Drive) – einen Server von uns gibt es nicht. Die Dateien sind mit dem Sync-Passwort verschlüsselt: Die Cloud sieht nur sinnlose Bytes. Auf dem Computer erscheint der Ordner, sobald das Programm der Cloud installiert ist, z. B. „Google Drive für Desktop“.',
+    'Telefoon en computer wisselen wijzigingen uit via een map in uw eigen cloud (getest met Google Drive) – een server van ons is er niet. De bestanden zijn versleuteld met het synchronisatiewachtwoord: de cloud ziet alleen betekenisloze bytes. Op de computer verschijnt de map zodra het programma van de cloud is geïnstalleerd, bijv. ‘Google Drive voor desktop’.',
   ],
-  'sync_choose_folder': ['Google-Drive-Ordner wählen', 'Google Drive-map kiezen'],
+  'sync_choose_folder': ['Cloud-Ordner wählen', 'Cloudmap kiezen'],
   'sync_password_new': ['Sync-Passwort festlegen', 'Synchronisatiewachtwoord bedenken'],
   'sync_password_new_sub': [
     'Sie geben es auf dem anderen Gerät ein. Das Passwort selbst wird nirgends gespeichert – schreiben Sie es auf.',

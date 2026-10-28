@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +12,7 @@ import '../io/home_widgets.dart';
 import '../l10n/strings.dart';
 import '../platform.dart';
 import '../state/app_state.dart';
+import '../version.dart';
 import 'bank_log_screen.dart';
 import 'data_screens.dart';
 import 'envelopes_screen.dart';
@@ -64,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
         LedgerTile(
           tr('plus_title'),
           hint: plusTileHint(state.plusStatus),
-          value: tr(state.isPlus ? 'lock_value_on' : 'lock_value_off'),
+          value: tr(state.isPlus ? 'on_m' : 'off_m'),
           valueColor: state.isPlus ? Ledger.accentOf(context) : null,
           onTap: () => push(const PlusScreen()),
         ),
@@ -88,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
         LedgerTile(
           tr('env_title'),
           hint: tr('env_tile_sub'),
-          value: tr(state.envelopes.on ? 'lock_value_on' : 'lock_value_off'),
+          value: tr(state.envelopes.on ? 'on_pl' : 'off_pl'),
           onTap: () => push(const EnvelopesScreen()),
         ),
         LedgerTile(
@@ -114,7 +116,7 @@ class SettingsScreen extends StatelessWidget {
           LedgerTile(
             tr('evening_setting'),
             hint: tr('evening_setting_sub'),
-            value: state.eveningReminder == 'off' ? tr('lock_value_off') : state.eveningReminder,
+            value: state.eveningReminder == 'off' ? tr('off_n') : state.eveningReminder,
             onTap: () => _chooseEvening(context, state),
           ),
         LedgerTile(tr('rates'), hint: tr('rates_sub'), onTap: () => push(const RatesScreen())),
@@ -140,7 +142,7 @@ class SettingsScreen extends StatelessWidget {
         LedgerTile(
           tr('hh_title'),
           hint: tr('hh_tile_sub'),
-          value: state.householdOn ? state.people.map((p) => p.name).join(', ') : tr('lock_value_off'),
+          value: state.householdOn ? state.people.map((p) => p.name).join(', ') : tr('off_m'),
           valueColor: state.householdOn ? good : null,
           onTap: () => push(const HouseholdScreen()),
         ),
@@ -179,6 +181,18 @@ class SettingsScreen extends StatelessWidget {
         ),
         LedgerTile(tr('help'), onTap: () => push(const HelpScreen())),
         LedgerTile(tr('show_guide'), onTap: () => push(const GuideScreen(closeOnFinish: true))),
+        // The version, and where new ones are: the link goes to the clipboard (no browser plugin).
+        LedgerTile(
+          tr('about_app'),
+          hint: tr('about_app_sub'),
+          value: appVersion,
+          onTap: () async {
+            await Clipboard.setData(const ClipboardData(text: releasesUrl));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('about_link_copied', [releasesUrl]))));
+            }
+          },
+        ),
       ]),
     );
   }
@@ -596,6 +610,13 @@ class HelpScreen extends StatelessWidget {
     ('help_money', Icons.savings_outlined),
     ('help_currency', Icons.currency_exchange),
     ('help_backup', Icons.cloud_outlined),
+    ('help_sync', Icons.devices_outlined),
+    ('help_household', Icons.people_outline),
+    ('help_statements', Icons.upload_file_outlined),
+    ('help_envelopes', Icons.mail_outline),
+    ('help_networth', Icons.trending_up),
+    ('help_taxes', Icons.receipt_long_outlined),
+    ('help_plus', Icons.workspace_premium_outlined),
   ];
 
   @override
@@ -657,7 +678,7 @@ Future<void> _chooseEvening(BuildContext context, AppState state) async {
           child: Text(tr('evening_setting'), style: Theme.of(sheet).textTheme.titleMedium),
         ),
         ListTile(leading: const Icon(Icons.schedule), title: Text(tr('evening_pick_time')), onTap: () => Navigator.pop(sheet, 'time')),
-        ListTile(leading: const Icon(Icons.notifications_off_outlined), title: Text(tr('lock_value_off')), onTap: () => Navigator.pop(sheet, 'off')),
+        ListTile(leading: const Icon(Icons.notifications_off_outlined), title: Text(tr('off_n')), onTap: () => Navigator.pop(sheet, 'off')),
       ]),
     ),
   );

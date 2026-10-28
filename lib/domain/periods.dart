@@ -176,12 +176,17 @@ class PeriodStats {
   int get remainingMinor => budgetMinor - spentMinor;
 
   /// [toBase] converts the amount that counts (my share) to the base currency; null = no rate.
+  /// [since]: the first day of bookkeeping — days before it have no budget (a year that began
+  /// before the app has only the months since). [todayLimit]: today's limit as the home screen
+  /// shows it (what is left ÷ the days left), for the day view of today.
   static PeriodStats compute({
     required Period period,
     required List<Txn> txns,
     required int? Function(Txn) toBase,
     required int Function(DateTime month) monthBudget,
     DateTime? now,
+    DateTime? since,
+    int? todayLimit,
   }) {
     final today = now ?? DateTime.now();
     final buckets = period.buckets;
@@ -210,15 +215,27 @@ class PeriodStats {
       }
     }
 
-    double dailyLimit(DateTime d) => monthBudget(DateTime(d.year, d.month)) / DateTime(d.year, d.month + 1, 0).day;
+    final dayStart = DateTime(today.year, today.month, today.day);
+    final first = since == null ? null : DateTime(since.year, since.month, since.day);
+    double dailyLimit(DateTime d) {
+      if (first != null && d.isBefore(first)) return 0;
+      if (todayLimit != null && period.type == PeriodType.day && d == dayStart) return todayLimit.toDouble();
+      return monthBudget(DateTime(d.year, d.month)) / DateTime(d.year, d.month + 1, 0).day;
+    }
+
     final budget = period.days.fold<double>(0, (s, d) => s + dailyLimit(d)).round();
     final budgetByBucket = [
       for (final b in buckets)
-        period.type == PeriodType.year ? monthBudget(b) : dailyLimit(b).round(),
+        period.type == PeriodType.year
+            ? (first != null && DateTime(b.year, b.month + 1).isBefore(first.add(const Duration(days: 1)))
+                ? 0
+                : first != null && b.year == first.year && b.month == first.month
+                    ? (monthBudget(b) * (DateTime(b.year, b.month + 1, 0).day - first.day + 1) / DateTime(b.year, b.month + 1, 0).day).round()
+                    : monthBudget(b))
+            : dailyLimit(b).round(),
     ];
 
     final days = period.days;
-    final dayStart = DateTime(today.year, today.month, today.day);
     final passed = days.where((d) => !d.isAfter(dayStart)).length;
 
     return PeriodStats(

@@ -35,9 +35,12 @@ class TxnFilter {
       );
 }
 
-/// [categoryName] gives the shown (translated) name of a category id, so "еда" finds Food.
+/// [categoryName] gives the shown (translated) name of a category id, so "еда" finds Food;
+/// [accountName] the account's, so "wechat" or "сбер" finds that account's operations. The app an
+/// operation was recorded from ("alipay:screen") is matched too.
 /// A number finds that amount: "45" finds 45 and 45,50; "45,5" only 45,50.
-bool matchesFilter(Txn t, TxnFilter f, String Function(int? categoryId) categoryName) {
+bool matchesFilter(Txn t, TxnFilter f, String Function(int? categoryId) categoryName,
+    {String Function(int? accountId)? accountName}) {
   if (f.kind != null && t.kind != f.kind) return false;
   if (f.from != null && t.time.isBefore(f.from!)) return false;
   if (f.to != null && !t.time.isBefore(f.to!)) return false;
@@ -51,5 +54,7 @@ bool matchesFilter(Txn t, TxnFilter f, String Function(int? categoryId) category
     final exact = q.contains(RegExp('[.,]'));
     if (exact ? t.amountMinor == number : t.amountMinor ~/ 100 == number ~/ 100) return true;
   }
-  return [t.merchant, t.note, categoryName(t.categoryId)].any((s) => s != null && s.toLowerCase().contains(q));
+  final app = t.source.split(':').first;
+  return [t.merchant, t.note, categoryName(t.categoryId), accountName?.call(t.accountId), app]
+      .any((s) => s != null && s.toLowerCase().contains(q));
 }

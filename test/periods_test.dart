@@ -94,4 +94,51 @@ void main() {
     expect(s.unconvertedCount, 1);
     expect(s.budgetMinor, 10000);
   });
+
+  test('no budget before the first operation: a year counts only the months since', () {
+    final s = PeriodStats.compute(
+      period: Period.containing(PeriodType.year, DateTime(2026, 10, 12)),
+      txns: [_e(DateTime(2026, 10, 12), 1000)],
+      toBase: (t) => t.amountMinor,
+      monthBudget: (_) => 310000,
+      since: DateTime(2026, 10, 1, 9),
+    );
+    // October to December only.
+    expect(s.budgetMinor, 3 * 310000);
+    expect(s.budgetByBucket[8], 0);
+    expect(s.budgetByBucket[9], 310000);
+
+    // A year before the first operation has no budget at all.
+    final before = PeriodStats.compute(
+      period: Period.containing(PeriodType.year, DateTime(2025, 5, 1)),
+      txns: const [],
+      toBase: (t) => t.amountMinor,
+      monthBudget: (_) => 310000,
+      since: DateTime(2026, 10, 1),
+    );
+    expect(before.budgetMinor, 0);
+  });
+
+  test('today in the day view has the home screen\'s limit', () {
+    final today = DateTime(2026, 10, 28, 15);
+    final s = PeriodStats.compute(
+      period: Period.containing(PeriodType.day, today),
+      txns: [_e(today, 18706)],
+      toBase: (t) => t.amountMinor,
+      monthBudget: (_) => 250000,
+      now: today,
+      todayLimit: 4919,
+    );
+    expect(s.budgetMinor, 4919);
+    // Another day keeps the usual share of the month.
+    final other = PeriodStats.compute(
+      period: Period.containing(PeriodType.day, DateTime(2026, 10, 20)),
+      txns: const [],
+      toBase: (t) => t.amountMinor,
+      monthBudget: (_) => 310000,
+      now: today,
+      todayLimit: 4919,
+    );
+    expect(other.budgetMinor, 10000);
+  });
 }

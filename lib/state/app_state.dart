@@ -159,6 +159,9 @@ class AppState extends ChangeNotifier {
   List<Txn> homeTxns = [];
   PeriodStats? homeStats;
   List<Txn> _currentMonthTxns = [];
+
+  /// The first operation's time: periods have no budget before it.
+  DateTime? _since;
   MonthStats? todayStats;
 
   // Overview: its own period.
@@ -432,6 +435,7 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     final month = DateTime(now.year, now.month);
     _currentMonthTxns = await repo.txnsBetween(month, DateTime(now.year, now.month + 1));
+    _since = await repo.firstTxnTime();
     homeTxns = await repo.txnsBetween(homePeriod.start, homePeriod.end);
     periodTxns = await repo.txnsBetween(period.start, period.end);
     analyticsTxns = await repo.txnsBetween(analyticsPeriod.start, analyticsPeriod.end);
@@ -511,10 +515,14 @@ class AppState extends ChangeNotifier {
       toBase: toBase,
       fixedDaily: fixedDailyLimit,
     );
-    homeStats = PeriodStats.compute(period: homePeriod, txns: homeTxns, toBase: toBase, monthBudget: monthBudget);
-    periodStats = PeriodStats.compute(period: period, txns: periodTxns, toBase: toBase, monthBudget: monthBudget);
-    analyticsStats =
-        PeriodStats.compute(period: analyticsPeriod, txns: analyticsTxns, toBase: toBase, monthBudget: monthBudget);
+    // Today's limit as the home screen shows it, so the day view says the same.
+    final todayLimit = todayStats!.todayAllowance.round();
+    homeStats = PeriodStats.compute(
+        period: homePeriod, txns: homeTxns, toBase: toBase, monthBudget: monthBudget, since: _since, todayLimit: todayLimit);
+    periodStats = PeriodStats.compute(
+        period: period, txns: periodTxns, toBase: toBase, monthBudget: monthBudget, since: _since, todayLimit: todayLimit);
+    analyticsStats = PeriodStats.compute(
+        period: analyticsPeriod, txns: analyticsTxns, toBase: toBase, monthBudget: monthBudget, since: _since, todayLimit: todayLimit);
     final months = [for (var i = 5; i >= 0; i--) DateTime(now.year, now.month - i)];
     monthlyTotals = [
       for (final m in months)

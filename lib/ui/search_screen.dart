@@ -157,7 +157,13 @@ class _SearchScreenState extends State<SearchScreen> {
     final theme = Theme.of(context);
     final all = _all;
     String categoryName(int? id) => id == null || state.categoryById[id] == null ? '' : state.categoryName(state.categoryById[id]!);
-    final found = all == null ? const <Txn>[] : all.where((t) => matchesFilter(t, _filter, categoryName)).toList();
+    String accountName(int? id) {
+      final a = id == null ? null : state.accounts.where((x) => x.id == id).firstOrNull;
+      return a == null ? '' : state.accountName(a);
+    }
+
+    final found =
+        all == null ? const <Txn>[] : all.where((t) => matchesFilter(t, _filter, categoryName, accountName: accountName)).toList();
 
     // Totals in the base currency; transfers to myself and other excluded ones don't count.
     var spent = 0, income = 0;

@@ -31,4 +31,13 @@ void main() {
     expect(m(const TxnFilter(categories: {1, 2}, accountId: 1)), isTrue);
     expect(m(const TxnFilter(accountId: 2)), isFalse);
   });
+
+  test('the account and the app it was recorded from are found too', () {
+    final w = Txn(time: DateTime(2026, 10, 27, 16), amountMinor: 1800, currency: 'CNY', kind: TxnKind.expense,
+        accountId: 7, source: 'wechat:notification');
+    String acc(int? id) => id == 7 ? 'WeChat' : '';
+    expect(matchesFilter(w, const TxnFilter(query: 'wechat'), cat, accountName: acc), isTrue);
+    expect(matchesFilter(w, const TxnFilter(query: 'WeCh'), cat), isTrue, reason: 'by the app even without the account name');
+    expect(matchesFilter(w, const TxnFilter(query: 'alipay'), cat, accountName: acc), isFalse);
+  });
 }

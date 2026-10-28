@@ -115,6 +115,38 @@ class _TxnEditorState extends State<TxnEditor> {
     _keypad = _isNew || t?.amountMinor == 0;
     _merchant = TextEditingController(text: t?.merchant ?? '');
     _note = TextEditingController(text: t?.note ?? '');
+    _initial = _snapshot();
+  }
+
+  /// What the editor held when it opened: leaving with something else asks first.
+  late final List<Object?> _initial;
+  List<Object?> _snapshot() =>
+      [_kind, _expr, _categoryId, _accountId, _merchant.text, _note.text, _time, _receipt, _taxTag, _goalId, _ownTransfer];
+  bool get _changed {
+    final now = _snapshot();
+    for (var i = 0; i < now.length; i++) {
+      if (now[i] != _initial[i]) return true;
+    }
+    return false;
+  }
+
+  /// Back or ×: with unsaved changes, "Discard?" first.
+  Future<void> _leave() async {
+    if (!_changed) {
+      Navigator.pop(context);
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: Text(tr(_isNew ? 'discard_new_q' : 'discard_edit_q')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('keep_editing'))),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(tr('discard'))),
+        ],
+      ),
+    );
+    if (discard == true && mounted) Navigator.pop(context);
   }
 
   @override
@@ -496,7 +528,12 @@ class _TxnEditorState extends State<TxnEditor> {
           ),
         );
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_isNew ? tr('new_op') : tr('op')),
         actions: [
@@ -731,6 +768,7 @@ class _TxnEditorState extends State<TxnEditor> {
         ),
         if (_keypad && MediaQuery.viewInsetsOf(context).bottom == 0) _Keypad(onKey: _key, onClear: () => setState(() => _expr = '')),
       ]),
+    ),
     );
   }
 }

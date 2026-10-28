@@ -84,7 +84,10 @@ class _TotalsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final over = stats.spentMinor > stats.budgetMinor;
-    final progress = stats.budgetMinor == 0 ? 0.0 : (stats.spentMinor / stats.budgetMinor).clamp(0.0, 1.0);
+    final ratio = stats.budgetMinor == 0 ? 0.0 : stats.spentMinor / stats.budgetMinor;
+    final progress = ratio.clamp(0.0, 1.0);
+    // 99.6 % is not "100 %": under the budget the share rounds down; over it, the real figure.
+    final share = ratio >= 1 ? (ratio * 100).round() : (ratio * 100).floor();
     final elapsed = stats.isCurrent && stats.daysTotal > 0 ? stats.daysPassed / stats.daysTotal : null;
     final small = theme.textTheme.bodySmall?.copyWith(color: Ledger.mutedOf(context));
 
@@ -115,7 +118,9 @@ class _TotalsCard extends StatelessWidget {
           LedgerBar(value: progress, tick: elapsed, color: over ? Ledger.badOf(context) : null),
           const SizedBox(height: 4),
           Row(children: [
-            Expanded(child: Text(tr('spent_share', [(progress * 100).round()]), style: small)),
+            Expanded(
+                child: Text(tr('spent_share', [share]),
+                    style: over ? small?.copyWith(color: Ledger.badOf(context)) : small)),
             if (elapsed != null)
               Flexible(
                 child: Text('│ ${tr('elapsed_share', [(elapsed * 100).round()])}',

@@ -274,7 +274,8 @@ void main() {
       // Settings: help, categories, backup screens.
       await tester.tap(find.text(tr('nav_settings')).last);
       await settle(tester);
-      for (final item in ['help', 'categories', 'backup']) {
+      // In the order they appear: the scroll only goes down.
+      for (final item in ['categories', 'backup', 'help']) {
         await tester.scrollUntilVisible(find.text(tr(item)), 200, scrollable: find.byType(Scrollable).last);
         // Keep it clear of the app bar and the bottom navigation bar.
         await Scrollable.ensureVisible(tester.element(find.text(tr(item))), alignment: 0.4);
