@@ -3,6 +3,52 @@ part of 'strings.dart';
 /// The shared budget's texts (lib/household/, lib/ui/household_screen.dart) and later additions
 /// in all six languages at once: [ru, en, zh, kk, de, nl].
 const _hh = <String, List<String>>{
+  // --- Automatic recording: the optional screen reading, Android's lock on apps from a file ---
+  'capture_optional': ['необязательно', 'optional', '可选', 'міндетті емес', 'optional', 'optioneel'],
+  'capture_step1_sub_optional': [
+    'Для банковских карт хватает уведомлений. Это нужно, только если платите через Alipay или WeChat, или чтобы дописывать пропущенное из истории операций в приложении банка.',
+    'For bank cards the notifications are enough. This is only needed if you pay with Alipay or WeChat, or to add what was missed from the operations history in the bank\'s app.',
+    '使用银行卡时，通知就足够了。只有使用支付宝或微信付款，或需要从银行应用的交易记录中补录遗漏时才需要。',
+    'Банк карталары үшін хабарламалар жеткілікті. Бұл тек Alipay не WeChat арқылы төлесеңіз немесе банк қолданбасындағы операциялар тарихынан өткізіп алғанды қосу үшін керек.',
+    'Für Bankkarten reichen die Benachrichtigungen. Nötig nur, wenn Sie mit Alipay oder WeChat zahlen oder Verpasstes aus dem Umsatzverlauf der Bank-App nachtragen wollen.',
+    'Voor bankpassen zijn de meldingen genoeg. Alleen nodig als u met Alipay of WeChat betaalt, of om gemiste posten uit de transactiegeschiedenis in de bank-app aan te vullen.',
+  ],
+  'rs_title': ['Сначала снимите защиту Android', 'First lift Android\'s lock', '请先解除 Android 的限制', 'Алдымен Android қорғауын алыңыз',
+      'Zuerst die Android-Sperre aufheben', 'Hef eerst de Android-blokkering op'],
+  'rs_why': [
+    'Android закрывает эти настройки у приложений, установленных из файла (через Telegram, браузер), а не из магазина. Снимается один раз, за две минуты.',
+    'Android locks these settings for apps installed from a file (via Telegram or a browser) rather than from a store. It is lifted once, in two minutes.',
+    'Android 会对从文件（通过 Telegram 或浏览器）而不是应用商店安装的应用锁定这些设置。只需解除一次，大约两分钟。',
+    'Android дүкеннен емес, файлдан (Telegram, браузер арқылы) орнатылған қолданбалардың осы баптауларын жабады. Бір рет, екі минутта алынады.',
+    'Android sperrt diese Einstellungen für Apps, die aus einer Datei (über Telegram oder einen Browser) statt aus einem Store installiert wurden. Das wird einmal aufgehoben, in zwei Minuten.',
+    'Android blokkeert deze instellingen voor apps die uit een bestand (via Telegram of een browser) zijn geïnstalleerd in plaats van uit een store. Eén keer opheffen, in twee minuten.',
+  ],
+  'rs_a': [
+    'Нажмите на переключатель «Сальдо» (если откроется список — найдите «Сальдо» в нём). Android покажет окно «Ограниченная настройка» — нажмите «ОК». Без этой попытки следующий пункт не появится.',
+    'Tap Saldo\'s switch (if a list opens, find Saldo in it). Android shows "Restricted setting" — tap "OK". Without this try the next option won\'t appear.',
+    '点击 Saldo 的开关（如果打开的是列表，请在其中找到 Saldo）。Android 会显示“受限制的设置”——点“确定”。不先尝试一次，下一步的选项不会出现。',
+    '«Сальдо» ауыстырғышын басыңыз (тізім ашылса — ішінен «Сальдо»-ны табыңыз). Android «Шектеулі баптау» терезесін көрсетеді — «ОК» басыңыз. Бұл әрекетсіз келесі тармақ шықпайды.',
+    'Tippen Sie auf den Schalter von Saldo (öffnet sich eine Liste, Saldo darin suchen). Android zeigt „Eingeschränkte Einstellung“ – auf „OK“ tippen. Ohne diesen Versuch erscheint die nächste Option nicht.',
+    'Tik op de schakelaar van Saldo (opent er een lijst, zoek Saldo daarin). Android toont "Beperkte instelling" – tik op "OK". Zonder deze poging verschijnt de volgende optie niet.',
+  ],
+  'rs_a_btn': ['Открыть переключатель', 'Open the switch', '打开开关', 'Ауыстырғышты ашу', 'Schalter öffnen', 'Schakelaar openen'],
+  'rs_b': [
+    'Откроется «О приложении». Нажмите ⋮ в правом верхнем углу → «Разрешить ограниченные настройки» → подтвердите PIN-кодом или отпечатком. Затем вернитесь сюда.',
+    'App info opens. Tap ⋮ in the top right corner → "Allow restricted settings" → confirm with your PIN or fingerprint. Then come back here.',
+    '会打开“应用信息”。点右上角的 ⋮ →“允许受限制的设置”→ 用密码或指纹确认。然后回到这里。',
+    '«Қолданба туралы» ашылады. Жоғарғы оң жақтағы ⋮ → «Шектеулі баптауларға рұқсат беру» → PIN-кодпен не саусақ ізімен растаңыз. Содан кейін осында оралыңыз.',
+    'App-Info öffnet sich. Oben rechts auf ⋮ tippen → „Eingeschränkte Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen. Dann hierher zurückkehren.',
+    'App-info opent. Tik rechtsboven op ⋮ → "Beperkte instellingen toestaan" → bevestig met pincode of vingerafdruk. Kom dan hier terug.',
+  ],
+  'rs_b_btn': ['Открыть «О приложении»', 'Open App info', '打开应用信息', '«Қолданба туралы» ашу', 'App-Info öffnen', 'App-info openen'],
+  'rs_after': [
+    'Когда защита снята, эта карточка исчезнет сама, а шаги ниже начнут включаться.',
+    'Once the lock is lifted this card disappears by itself and the steps below can be switched on.',
+    '限制解除后，此卡片会自动消失，下面的步骤即可开启。',
+    'Қорғау алынғанда бұл карточка өзі жоғалады, ал төмендегі қадамдар қосыла бастайды.',
+    'Ist die Sperre aufgehoben, verschwindet diese Karte von selbst und die Schritte unten lassen sich einschalten.',
+    'Zodra de blokkering is opgeheven verdwijnt deze kaart vanzelf en kunnen de stappen hieronder aan.',
+  ],
   // --- Settings → About ---
   'about_app': ['О приложении', 'About', '关于', 'Қолданба туралы', 'Über die App', 'Over de app'],
   'about_app_sub': ['Версия и где взять новую', 'The version and where to get a new one', '版本及新版本下载地址', 'Нұсқа және жаңасын қайдан алуға болады',

@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
     }
     final items = <Widget>[
       if (state.householdOn && state.household!.personalLimits) const BudgetScopeBar(),
-      if (!state.captureStatus.allOn && !appIsDesktop) const _CaptureSetupBanner(),
+      if (!state.captureReady && !appIsDesktop) const _CaptureSetupBanner(),
       if (state.reviewQueue.isNotEmpty) _ReviewBanner(count: state.reviewQueue.length),
       if (state.staleAccounts.isNotEmpty && !state.staleHintHidden) _StaleBanner(accounts: state.staleAccounts),
       if (state.recurringSoon.isNotEmpty) _SoonBlock(items: state.recurringSoon),

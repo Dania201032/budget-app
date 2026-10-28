@@ -41,7 +41,6 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final status = state.captureStatus;
     void push(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
     final budget = state.rawMonthBudget(DateTime.now());
 
@@ -106,9 +105,9 @@ class SettingsScreen extends StatelessWidget {
         if (!appIsDesktop)
           LedgerTile(
           tr('capture'),
-          hint: status.allOn ? null : tr('capture_setup_needed'),
-          value: status.allOn ? tr('capture_on') : '!',
-          valueColor: status.allOn ? good : bad,
+          hint: state.captureReady ? null : tr('capture_setup_needed'),
+          value: state.captureReady ? tr('capture_on') : '!',
+          valueColor: state.captureReady ? good : bad,
           onTap: () => push(const CaptureSetupScreen()),
         ),
         // The phone reminds; the computer has no notifications of its own.
@@ -483,15 +482,19 @@ class _CaptureSetupScreenState extends State<CaptureSetupScreen> with WidgetsBin
     final st = state.captureStatus;
     final capture = state.capture;
 
-    Widget step(int n, String title, String subtitle, bool done, VoidCallback onTap) => ListTile(
+    Widget step(int n, String title, String subtitle, bool done, VoidCallback onTap, {bool optional = false}) => ListTile(
           leading: CircleAvatar(
             backgroundColor: done ? Colors.green : Theme.of(context).colorScheme.primaryContainer,
             child: done ? const Icon(Icons.check, color: Colors.white) : Text('$n'),
           ),
-          title: Text(title),
+          title: Text(optional && !done ? '$title · ${tr('capture_optional')}' : title),
           subtitle: Text(subtitle),
+          trailing: done ? null : const Icon(Icons.chevron_right),
           onTap: done ? null : onTap,
         );
+    final needsScreen = state.captureNeedsScreen;
+    // Locked by Android and something still to switch on: lift that first, step by step.
+    final locked = st.restricted && (!st.notifications || (needsScreen && !st.accessibility));
 
     // Both special accesses open only after the in-app disclosure was accepted (Google Play policy).
     Future<void> withConsent(Future<void> Function() open) async {
@@ -502,10 +505,20 @@ class _CaptureSetupScreenState extends State<CaptureSetupScreen> with WidgetsBin
       appBar: AppBar(title: Text(tr('capture'))),
       body: ListView(children: [
         Padding(padding: const EdgeInsets.all(16), child: Text(tr('capture_explain'))),
-        step(1, tr('capture_step1'), tr('capture_step1_sub'), st.accessibility, () => withConsent(capture.openAccessibility)),
-        step(2, tr('capture_step2'), tr('capture_step2_sub'), st.notifications, () => withConsent(capture.openNotificationAccess)),
-        step(3, tr('capture_step3'), tr('capture_step3_sub'), st.postNotifications, capture.requestPostNotifications),
-        if (st.mayBeRestricted)
+        if (locked)
+          _RestrictedGuide(
+            onTry: () => withConsent(!st.notifications ? capture.openNotificationAccess : capture.openAccessibility),
+            onAppInfo: capture.openAppInfo,
+          ),
+        // The notifications first: with bank cards they are all it takes.
+        step(1, tr('capture_step2'), tr('capture_step2_sub'), st.notifications, () => withConsent(capture.openNotificationAccess)),
+        step(2, tr('capture_step3'), tr('capture_step3_sub'), st.postNotifications, capture.requestPostNotifications),
+        step(3, tr('capture_step1'), tr(needsScreen ? 'capture_step1_sub' : 'capture_step1_sub_optional'), st.accessibility,
+            () => withConsent(capture.openAccessibility),
+            optional: !needsScreen),
+        if (locked)
+          const SizedBox.shrink()
+        else if (st.mayBeRestricted && (!st.notifications || (needsScreen && !st.accessibility)))
           Card(
             margin: const EdgeInsets.all(16),
             child: Padding(
@@ -541,6 +554,71 @@ class _CaptureSetupScreenState extends State<CaptureSetupScreen> with WidgetsBin
           child: Text(tr('bank_history_hint'), style: Theme.of(context).textTheme.bodySmall),
         ),
       ]),
+    );
+  }
+}
+
+/// Android's lock on special accesses for an app installed from a file, lifted in two moves:
+/// try the switch (Android then says "Restricted setting" and only after that offers the way
+/// out), then App info → ⋮ → "Allow restricted settings". The screen notices when it is done.
+class _RestrictedGuide extends StatefulWidget {
+  final VoidCallback onTry;
+  final VoidCallback onAppInfo;
+  const _RestrictedGuide({required this.onTry, required this.onAppInfo});
+
+  @override
+  State<_RestrictedGuide> createState() => _RestrictedGuideState();
+}
+
+class _RestrictedGuideState extends State<_RestrictedGuide> {
+  bool _tried = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget move(int n, String text, String button, VoidCallback onTap, {bool done = false, bool primary = false}) => Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            CircleAvatar(
+              radius: 13,
+              backgroundColor: done ? Colors.green : theme.colorScheme.primary,
+              child: done
+                  ? const Icon(Icons.check, size: 16, color: Colors.white)
+                  : Text('$n', style: TextStyle(fontSize: 13, color: theme.colorScheme.onPrimary)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(text),
+                const SizedBox(height: 8),
+                primary
+                    ? FilledButton(onPressed: onTap, child: Text(button))
+                    : FilledButton.tonal(onPressed: onTap, child: Text(button)),
+              ]),
+            ),
+          ]),
+        );
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.lock_outline, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(tr('rs_title'), style: theme.textTheme.titleSmall)),
+          ]),
+          const SizedBox(height: 6),
+          Text(tr('rs_why'), style: theme.textTheme.bodySmall),
+          move(1, tr('rs_a'), tr('rs_a_btn'), () {
+            setState(() => _tried = true);
+            widget.onTry();
+          }, done: _tried, primary: !_tried),
+          move(2, tr('rs_b'), tr('rs_b_btn'), widget.onAppInfo, primary: _tried),
+          const SizedBox(height: 10),
+          Text(tr('rs_after'), style: theme.textTheme.bodySmall),
+        ]),
+      ),
     );
   }
 }

@@ -457,9 +457,15 @@ const _deNl = <String, List<String>>{
     'De app leest alleen schermen met het betaalresultaat en transactieoverzichten in bank-apps, Alipay en WeChat, en betaal- en bankmeldingen. Chats en andere apps worden niet gelezen; de gegevens blijven op de telefoon.',
   ],
   'capture_step1': ['Zahlungsbildschirm lesen', 'Het betaalscherm lezen'],
-  'capture_step1_sub': ['Bedienungshilfen → Installierte Apps → Saldo → einschalten', 'Toegankelijkheid → Geïnstalleerde apps → Saldo → aanzetten'],
+  'capture_step1_sub': [
+    'Die Bedienungshilfen öffnen sich: Saldo suchen (meist unter „Installierte“ oder „Heruntergeladene Apps“) und einschalten. Nötig für die Zahlungsbildschirme von Alipay und WeChat.',
+    'Toegankelijkheid opent: zoek Saldo (meestal onder "Geïnstalleerde" of "Gedownloade apps") en zet het aan. Nodig voor de betaalschermen van Alipay en WeChat.',
+  ],
   'capture_step2': ['Zugriff auf Benachrichtigungen', 'Toegang tot meldingen'],
-  'capture_step2_sub': ['Benachrichtigungen lesen, beantworten & steuern → Saldo → Zulassen', 'Meldingen lezen, beantwoorden en beheren → Saldo → Toestaan'],
+  'capture_step2_sub': [
+    'Tippen – der Schalter von Saldo öffnet sich, einschalten. So werden die Zahlungsbenachrichtigungen der Banken erfasst.',
+    'Tik – de schakelaar van Saldo opent, zet hem aan. Zo worden de betaalmeldingen van banken vastgelegd.',
+  ],
   'capture_step3': ['„Erfasst: …“ anzeigen', '‘Vastgelegd: …’ tonen'],
   'capture_step3_sub': ['Benachrichtigungen für die App erlauben', 'Meldingen voor de app toestaan'],
   'restricted_hint': [

@@ -191,8 +191,17 @@ class CaptureStatus {
   /// Android API level; 33+ may show "Restricted settings" for an app installed from a file.
   final int sdk;
 
-  const CaptureStatus({this.accessibility = false, this.notifications = false, this.postNotifications = false, this.sdk = 0});
+  /// Android still keeps this app's special accesses locked ("Restricted settings": installed
+  /// from a file, not yet allowed in App info).
+  final bool restricted;
+
+  const CaptureStatus(
+      {this.accessibility = false, this.notifications = false, this.postNotifications = false, this.sdk = 0, this.restricted = false});
   bool get allOn => accessibility && notifications && postNotifications;
+
+  /// Recording works: the payment notifications are read and "Recorded" can be shown. Reading
+  /// the payment screen counts only where it is needed ([needsScreen]: Alipay, WeChat).
+  bool ready({required bool needsScreen}) => notifications && postNotifications && (accessibility || !needsScreen);
 
   bool get mayBeRestricted => sdk >= 33 && !(accessibility && notifications);
 }
@@ -208,6 +217,7 @@ class CaptureService {
         notifications: m['notifications'] == true,
         postNotifications: m['postNotifications'] == true,
         sdk: (m['sdk'] as num?)?.toInt() ?? 0,
+        restricted: m['restricted'] == true,
       );
     } on MissingPluginException {
       return const CaptureStatus();

@@ -62,6 +62,11 @@ class AppState extends ChangeNotifier {
   bool loaded = false;
   bool onboarded = false;
   String country = 'CN';
+
+  /// Reading the payment screen is needed where people pay with Alipay or WeChat (their payment
+  /// notifications lack the details); with bank cards the notifications are enough.
+  bool get captureNeedsScreen => country == 'CN' || accounts.any((a) => a.type == 'alipay' || a.type == 'wechat');
+  bool get captureReady => captureStatus.ready(needsScreen: captureNeedsScreen);
   String baseCurrency = 'CNY';
   bool budgetEnabled = true;
 

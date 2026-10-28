@@ -2,9 +2,13 @@ package app.budget.budget_app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AppOpsManager
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -62,6 +66,7 @@ class MainActivity : FlutterFragmentActivity() {
                         // Android 13+ blocks both special accesses for apps installed from a file
                         // ("Restricted settings") until the user allows it in App info.
                         "sdk" to Build.VERSION.SDK_INT,
+                        "restricted" to restrictedSettings(),
                     )
                 )
                 "consumeInbox" -> result.success(CaptureInbox.consume(this))
@@ -70,8 +75,8 @@ class MainActivity : FlutterFragmentActivity() {
                     BankLog.clear(this)
                     result.success(null)
                 }
-                "openAccessibility" -> open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), result)
-                "openNotificationAccess" -> open(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"), result)
+                "openAccessibility" -> openFirst(result, accessibilityIntents())
+                "openNotificationAccess" -> openFirst(result, notificationAccessIntents())
                 "openAppInfo" -> open(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
                     result,
@@ -292,5 +297,75 @@ class MainActivity : FlutterFragmentActivity() {
     private fun open(intent: Intent, result: MethodChannel.Result) {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         result.success(null)
+    }
+
+    /** Tries the intents in order (the most precise first); some phones lack or forbid one. */
+    private fun openFirst(result: MethodChannel.Result, intents: List<Intent>) {
+        for (i in intents) {
+            try {
+                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                result.success(null)
+                return
+            } catch (e: ActivityNotFoundException) {
+            } catch (e: SecurityException) {
+            }
+        }
+        result.success(null)
+    }
+
+    /**
+     * The switch of this app's accessibility service itself, so nobody has to find it in a list
+     * whose name differs on every phone (Samsung: "Installed apps", Pixel: "Downloaded apps"…).
+     * Older phones: the list, with this app's row highlighted where the Settings app supports it.
+     */
+    private fun accessibilityIntents(): List<Intent> {
+        val component = ComponentName(this, PaymentAccessibilityService::class.java).flattenToString()
+        val highlight = Bundle().apply { putString(":settings:fragment_args_key", component) }
+        return listOfNotNull(
+            if (Build.VERSION.SDK_INT >= 31) {
+                Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS").putExtra(Intent.EXTRA_COMPONENT_NAME, component)
+            } else {
+                null
+            },
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                .putExtra(":settings:fragment_args_key", component)
+                .putExtra(":settings:show_fragment_args", highlight),
+        )
+    }
+
+    /** The notification-access switch of this app itself (Android 11+), else the list. */
+    private fun notificationAccessIntents(): List<Intent> {
+        val component = ComponentName(this, PaymentNotificationListener::class.java).flattenToString()
+        return listOfNotNull(
+            if (Build.VERSION.SDK_INT >= 30) {
+                Intent("android.settings.NOTIFICATION_LISTENER_DETAIL_SETTINGS")
+                    .putExtra("android.provider.extra.NOTIFICATION_LISTENER_COMPONENT_NAME", component)
+            } else {
+                null
+            },
+            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
+        )
+    }
+
+    /**
+     * Android 13+ greys out the special accesses of an app installed from a file (Telegram, a
+     * browser, a file manager) until "Allow restricted settings" in App info. True while that
+     * still applies to this app; the screen then leads through lifting it first.
+     */
+    private fun restrictedSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return false
+        val fromFile = try {
+            val source = packageManager.getInstallSourceInfo(packageName).packageSource
+            source == PackageInstaller.PACKAGE_SOURCE_LOCAL_FILE || source == PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE
+        } catch (e: Exception) {
+            false
+        }
+        if (!fromFile) return false
+        return try {
+            val ops = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+            ops.unsafeCheckOpNoThrow("android:access_restricted_settings", applicationInfo.uid, packageName) != AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            true
+        }
     }
 }

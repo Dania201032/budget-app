@@ -23,13 +23,19 @@ void main() {
   const channel = MethodChannel('budget/capture');
   final opened = <String>[];
   var sdk = 34;
+  var restricted = false;
+  var notifications = false;
+  var country = 'CN';
 
   setUp(() {
     opened.clear();
+    restricted = false;
+    notifications = false;
+    country = 'CN';
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
       switch (call.method) {
         case 'status':
-          return {'accessibility': false, 'notifications': false, 'postNotifications': true, 'sdk': sdk};
+          return {'accessibility': false, 'notifications': notifications, 'postNotifications': true, 'sdk': sdk, 'restricted': restricted};
         case 'consumeInbox':
         case 'bankLog':
           return '';
@@ -55,6 +61,7 @@ void main() {
           factory: databaseFactoryFfi, path: '${Directory.systemTemp.path}/setup_${DateTime.now().microsecondsSinceEpoch}.db');
       final repo = Repository(db);
       await repo.setSetting('onboarded', '1');
+      await repo.applyCountryPreset(country, fresh: true, cashName: 'Наличные');
       state = AppState(repo, CaptureService(), RatesService(db, client: MockClient((_) async => http.Response('{}', 404))));
       await state.init();
     });
@@ -98,6 +105,7 @@ void main() {
   testWidgets('Android 13+: the "Restricted settings" walkthrough opens App info', (tester) async {
     sdk = 34;
     await pump(tester);
+    await tester.scrollUntilVisible(find.text(tr('restricted_t')), 200);
     expect(find.text(tr('restricted_t')), findsOneWidget);
     await tester.ensureVisible(find.text(tr('restricted_button')));
     await tester.pumpAndSettle();
@@ -110,5 +118,33 @@ void main() {
     sdk = 31;
     await pump(tester);
     expect(find.text(tr('restricted_t')), findsNothing);
+  });
+
+  testWidgets('installed from a file: the lock is lifted first — try the switch, then App info', (tester) async {
+    sdk = 34;
+    restricted = true;
+    final state = await pump(tester);
+    state.captureConsent = true;
+    expect(find.text(tr('rs_title')), findsOneWidget);
+    await tester.tap(find.text(tr('rs_a_btn')));
+    await settle(tester);
+    // The switch that is still missing: the notifications come first.
+    expect(opened, ['openNotificationAccess']);
+    await tester.ensureVisible(find.text(tr('rs_b_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(tr('rs_b_btn')));
+    await settle(tester);
+    expect(opened, ['openNotificationAccess', 'openAppInfo']);
+  });
+
+  testWidgets('with bank cards (Russia) the notifications are enough; reading the screen is optional', (tester) async {
+    sdk = 34;
+    country = 'RU';
+    notifications = true;
+    final state = await pump(tester);
+    expect(state.captureNeedsScreen, isFalse);
+    expect(state.captureReady, isTrue, reason: 'notifications on, screen reading off');
+    expect(find.textContaining(tr('capture_optional')), findsOneWidget);
+    expect(find.text(tr('rs_title')), findsNothing);
   });
 }
