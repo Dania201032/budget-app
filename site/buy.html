@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Купить Сальдо Плюс</title>
+<meta name="description" content="Ключ Сальдо Плюс: СБП, Alipay или звёзды Telegram. Ключ приходит в Telegram или на почту.">
+<meta name="theme-color" content="#0E3B34">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="buy-page">
+
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.svg" alt=""><span>Сальдо</span></a>
+    <div class="tools">
+      <select class="lang" id="lang" aria-label="Language"></select>
+      <button class="iconbtn" id="theme" type="button" data-i18n-title="theme" title="Тема">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap checkout">
+  <a class="back" href="./#plus" data-i18n="b_back">← На главную</a>
+  <div class="kicker" data-i18n="pl_k">Сальдо Плюс</div>
+  <h1 data-i18n="b_title">Покупка ключа</h1>
+  <p class="lead" data-i18n="b_lead"></p>
+
+  <!-- 1. term -->
+  <section class="stepbox" id="s-plan">
+    <h2><span class="n">1</span><span data-i18n="b_s1">Срок</span></h2>
+    <div class="opts two" role="radiogroup">
+      <button type="button" class="opt" role="radio" data-plan="month"><b data-i18n="per_month">Месяц</b><span class="pr mono" data-price="month"></span></button>
+      <button type="button" class="opt" role="radio" data-plan="year"><b data-i18n="per_year">Год</b><span class="pr mono" data-price="year"></span><span class="tag" data-i18n="pr_save">выгоднее на 45%</span></button>
+    </div>
+  </section>
+
+  <!-- 2. way to pay -->
+  <section class="stepbox" id="s-pay">
+    <h2><span class="n">2</span><span data-i18n="b_s2">Способ оплаты</span></h2>
+    <div class="opts" role="radiogroup">
+      <button type="button" class="opt row" role="radio" data-pay="sbp"><i class="ico sbp">₽</i><span><b data-i18n="b_sbp">СБП</b><small data-i18n="b_sbp_d"></small></span><span class="soonb badge" data-i18n="soon">скоро</span></button>
+      <button type="button" class="opt row" role="radio" data-pay="ali"><i class="ico ali">支</i><span><b data-i18n="b_ali">Alipay</b><small data-i18n="b_ali_d"></small></span><span class="soonb badge" data-i18n="soon">скоро</span></button>
+      <button type="button" class="opt row" role="radio" data-pay="stars"><i class="ico stars">⭐</i><span><b data-i18n="b_stars">Telegram Stars</b><small data-i18n="b_stars_d"></small></span></button>
+    </div>
+  </section>
+
+  <!-- 3. Stars: everything happens in Telegram -->
+  <section class="stepbox" id="s-stars" hidden>
+    <h2><span class="n">3</span><span data-i18n="b_s4">Оплата</span></h2>
+    <a class="btn wide" id="starsBtn" href="https://t.me/Saldobudget_bot" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.4 4.2 2.9 11.3c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.5-1.8zM8.7 14.1l9.6-6c.5-.3.9-.1.5.2l-8.2 7.4-.3 3.4-1.6-5z"/></svg>
+      <span id="starsLbl"></span>
+    </a>
+    <p class="hint" data-i18n="b_stars_note"></p>
+  </section>
+
+  <!-- 3. QR: where the key goes -->
+  <section class="stepbox" id="s-to" hidden>
+    <h2><span class="n">3</span><span data-i18n="b_s3">Куда прислать ключ</span></h2>
+    <div class="opts two" role="radiogroup">
+      <button type="button" class="opt row" role="radio" data-to="tg"><i class="ico tg">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.4 4.2 2.9 11.3c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.5-1.8z"/></svg></i>
+        <span><b>Telegram</b><small data-i18n="b_to_tg_d"></small></span></button>
+      <button type="button" class="opt row" role="radio" data-to="mail"><i class="ico mail">@</i><span><b data-i18n="b_to_mail">Почта</b><small data-i18n="b_to_mail_d"></small></span></button>
+    </div>
+    <label class="field" id="mailField" hidden>
+      <span data-i18n="b_mail_l">Адрес почты</span>
+      <input type="email" id="mail" autocomplete="email" inputmode="email" placeholder="name@example.com" spellcheck="false">
+    </label>
+  </section>
+
+  <!-- 4. QR: pay -->
+  <section class="stepbox" id="s-qr" hidden>
+    <h2><span class="n">4</span><span data-i18n="b_s4">Оплата</span></h2>
+    <p class="hint" id="needMail" data-i18n="b_need_mail" hidden></p>
+    <div class="paycard" id="paycard">
+      <div class="qrcol">
+        <div class="qr big" id="qr"></div>
+        <a class="save-qr" id="saveQr" download data-i18n="b_save_qr">Сохранить QR</a>
+      </div>
+      <div class="paydata">
+        <div class="line"><span data-i18n="b_sum">Сумма</span><b class="mono" id="sum"></b></div>
+        <div class="line col"><span data-i18n="b_comment">Комментарий к переводу</span>
+          <div class="copyrow"><code id="comment"></code><button type="button" class="copy" id="copy" data-i18n="b_copy">Копировать</button></div>
+        </div>
+        <ol class="howpay" id="howpay"></ol>
+        <a class="btn wide" id="claimBtn" href="https://t.me/Saldobudget_bot" target="_blank" rel="noopener" hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.4 4.2 2.9 11.3c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.5-1.8zM8.7 14.1l9.6-6c.5-.3.9-.1.5.2l-8.2 7.4-.3 3.4-1.6-5z"/></svg>
+          <span data-i18n="b_claim">Получить ключ в Telegram</span>
+        </a>
+      </div>
+    </div>
+    <p class="hint small" data-i18n="b_order_note"></p>
+  </section>
+
+  <p class="after"><span data-i18n="b_after"></span> <a href="./#activate" data-i18n="act_t">Как включить Плюс</a> · <a href="https://t.me/Saldobudget_bot" target="_blank" rel="noopener" data-i18n="ft_bot">Telegram-бот</a></p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.svg" alt=""><span>Сальдо</span></a>
+    <span data-i18n="ft_site">Сайт без cookies и счётчиков</span>
+    <a href="https://github.com/Dania201032/saldo" data-i18n="ft_code">Исходный код</a>
+    <span class="sp">© 2026 Сальдо</span>
+  </div>
+</footer>
+
+<script src="i18n.js"></script>
+<script src="buy.js"></script>
+</body>
+</html>

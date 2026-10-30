@@ -45,7 +45,6 @@
     renderRelease();
     resetDemo();
     renderPrice();
-    showQr();
   }
   sel.addEventListener('change', () => { store.set('lang', sel.value); applyLang(sel.value); });
 
@@ -255,42 +254,22 @@
     new ResizeObserver(place).observe(el);
     $$('button', el).forEach((b) => new ResizeObserver(place).observe(b));
   }
-  // Same prices as the sales bot (saldo_shop/bin/bot.dart).
-  const PRICES = { month: { stars: 100, sbp: 149, ali: 15 }, year: { stars: 650, sbp: 990, ali: 99 } };
-  const CUR = { stars: '⭐', sbp: '₽', ali: '¥' };
-  let per = 'year', pay = 'stars';
-  // The bot speaks ru, en and zh; it opens on the step after the choice made here.
-  const BOT = 'https://t.me/Saldobudget_bot';
-  const botLang = () => ({ ru: 'ru', kk: 'ru', zh: 'zh' })[LANGS[li]] || 'en';
+  // Same prices as the buy page (buy.js) and the sales bot (saldo_shop/bin/bot.dart). The card shows
+  // the language's usual currency; buying itself is on buy.html.
+  const PRICES = { month: { sbp: 149, ali: 15, stars: 100 }, year: { sbp: 990, ali: 99, stars: 650 } };
+  const CUR = { sbp: '₽', ali: '¥', stars: '⭐' };
+  let per = 'year';
   function renderPrice() {
-    const amount = PRICES[per][pay];
+    const main = LANGS[li] === 'zh' ? 'ali' : 'sbp';
+    const amount = PRICES[per][main];
     countTo($('#amt'), Number($('#amt').textContent.replace(/\D/g, '')) || amount, amount, '');
-    $('#amtl').textContent = tr(per === 'year' ? 'pr_year' : 'pr_month', [CUR[pay]]);
+    $('#amtl').textContent = tr(per === 'year' ? 'pr_year' : 'pr_month', [CUR[main]]);
     $('#save').classList.toggle('off', per !== 'year');
-    $('#buy1').textContent = tr(pay === 'ali' ? 'buy_1_ali' : 'buy_1');
-    // SBP and Alipay open together with their QR codes; until then the bot offers Stars for the same order.
-    const open = pay === 'stars' || qrOk[pay];
-    $('#tgBuy').href = `${BOT}?start=${per}_${open ? pay : 'stars'}_${botLang()}`;
-    $('#buyNote').textContent = tr(pay === 'stars' ? 'buy_note_stars' : open ? 'buy_note_qr' : 'buy_note_soon');
-    $('#noTg').hidden = pay === 'stars';
+    const others = Object.keys(CUR).filter((k) => k !== main).map((k) => `${PRICES[per][k]} ${CUR[k]}`).join(' · ');
+    $('#altPrices').textContent = tr('pr_or', [others]);
+    $('#buyBtn').href = `buy.html?plan=${per}`;
   }
   seg($('#period'), (b) => { per = b.dataset.per; renderPrice(); });
-  seg($('#pay'), (b) => { pay = b.dataset.pay; renderPrice(); showQr(); });
-
-  // The QR codes: drop sbp-qr.png / alipay-qr.png next to this page and they show up.
-  const QR = { sbp: 'sbp-qr.png', ali: 'alipay-qr.png' };
-  const qrOk = {};
-  function showQr() {
-    const box = $('#qr');
-    if (qrOk[pay]) { box.innerHTML = ''; box.append(qrOk[pay]); return; }
-    box.innerHTML = `<div class="ph">${tr('qr_soon')}</div>`;
-  }
-  Object.entries(QR).forEach(([k, src]) => {
-    const img = new Image();
-    img.alt = 'QR ' + (k === 'ali' ? 'Alipay' : 'СБП');
-    img.onload = () => { qrOk[k] = img; if (k === pay) showQr(); renderPrice(); };
-    img.src = src;
-  });
 
   // ---------- phones: the menu and the download dock ----------
   const menu = $('#menu'), nav = $('#nav');

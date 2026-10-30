@@ -22,6 +22,7 @@
       <a href="#privacy" data-i18n="nav_privacy">Приватность</a>
       <a href="#install" data-i18n="nav_install">Установка</a>
       <a href="#plus" data-i18n="nav_plus">Плюс</a>
+      <a href="buy.html" class="only-menu" data-i18n="buy_t">Купить ключ</a>
       <a href="#activate" class="only-menu" data-i18n="act_t">Как включить Плюс</a>
       <a href="https://t.me/Saldobudget_bot" class="only-menu" target="_blank" rel="noopener" data-i18n="ft_bot">Telegram-бот</a>
     </nav>
@@ -286,20 +287,9 @@
         <li data-i18n="pr_li2"></li>
         <li data-i18n="pr_li3"></li>
       </ul>
-      <div class="seg pay" id="pay"><span class="knob"></span><button type="button" class="on" data-pay="stars" data-i18n="pay_stars">Telegram ⭐</button><button type="button" data-pay="sbp" data-i18n="pay_sbp">СБП · ₽</button><button type="button" data-pay="ali" data-i18n="pay_ali">Alipay · ¥</button></div>
       <div class="buy">
-        <a class="btn tg" id="tgBuy" href="https://t.me/Saldobudget_bot" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.4 4.2 2.9 11.3c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.5-1.8zM8.7 14.1l9.6-6c.5-.3.9-.1.5.2l-8.2 7.4-.3 3.4-1.6-5z"/></svg>
-          <span data-i18n="buy_tg">Купить в Telegram</span>
-        </a>
-        <p class="buy-note" id="buyNote"></p>
-        <details class="no-tg" id="noTg">
-          <summary data-i18n="no_tg">Нет Telegram? Оплата по QR</summary>
-          <div class="buy-qr">
-            <div class="qr" id="qr"><div class="ph" data-i18n="qr_soon">QR-код появится здесь</div></div>
-            <ol><li id="buy1" data-i18n="buy_1"></li><li data-i18n="buy_2"></li><li data-i18n="buy_3"></li></ol>
-          </div>
-        </details>
+        <a class="btn tg" id="buyBtn" href="buy.html?plan=year" data-i18n="buy_t">Купить ключ</a>
+        <p class="buy-note" id="altPrices"></p>
       </div>
     </div>
 
