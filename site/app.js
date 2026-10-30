@@ -255,15 +255,24 @@
     new ResizeObserver(place).observe(el);
     $$('button', el).forEach((b) => new ResizeObserver(place).observe(b));
   }
-  const PRICES = { month: { sbp: 149, ali: 15 }, year: { sbp: 990, ali: 99 } };
-  const CUR = { sbp: '₽', ali: '¥' };
-  let per = 'year', pay = 'sbp';
+  // Same prices as the sales bot (saldo_shop/bin/bot.dart).
+  const PRICES = { month: { stars: 100, sbp: 149, ali: 15 }, year: { stars: 650, sbp: 990, ali: 99 } };
+  const CUR = { stars: '⭐', sbp: '₽', ali: '¥' };
+  let per = 'year', pay = 'stars';
+  // The bot speaks ru, en and zh; it opens on the step after the choice made here.
+  const BOT = 'https://t.me/Saldobudget_bot';
+  const botLang = () => ({ ru: 'ru', kk: 'ru', zh: 'zh' })[LANGS[li]] || 'en';
   function renderPrice() {
     const amount = PRICES[per][pay];
     countTo($('#amt'), Number($('#amt').textContent.replace(/\D/g, '')) || amount, amount, '');
     $('#amtl').textContent = tr(per === 'year' ? 'pr_year' : 'pr_month', [CUR[pay]]);
     $('#save').classList.toggle('off', per !== 'year');
     $('#buy1').textContent = tr(pay === 'ali' ? 'buy_1_ali' : 'buy_1');
+    // SBP and Alipay open together with their QR codes; until then the bot offers Stars for the same order.
+    const open = pay === 'stars' || qrOk[pay];
+    $('#tgBuy').href = `${BOT}?start=${per}_${open ? pay : 'stars'}_${botLang()}`;
+    $('#buyNote').textContent = tr(pay === 'stars' ? 'buy_note_stars' : open ? 'buy_note_qr' : 'buy_note_soon');
+    $('#noTg').hidden = pay === 'stars';
   }
   seg($('#period'), (b) => { per = b.dataset.per; renderPrice(); });
   seg($('#pay'), (b) => { pay = b.dataset.pay; renderPrice(); showQr(); });
@@ -279,9 +288,27 @@
   Object.entries(QR).forEach(([k, src]) => {
     const img = new Image();
     img.alt = 'QR ' + (k === 'ali' ? 'Alipay' : 'СБП');
-    img.onload = () => { qrOk[k] = img; if (k === pay) showQr(); };
+    img.onload = () => { qrOk[k] = img; if (k === pay) showQr(); renderPrice(); };
     img.src = src;
   });
+
+  // ---------- phones: the menu and the download dock ----------
+  const menu = $('#menu'), nav = $('#nav');
+  const setMenu = (open) => { nav.classList.toggle('open', open); menu.setAttribute('aria-expanded', String(open)); top.classList.toggle('menu-open', open); };
+  menu.addEventListener('click', () => setMenu(!nav.classList.contains('open')));
+  $$('a', nav).forEach((a) => a.addEventListener('click', () => setMenu(false)));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+  document.addEventListener('click', (e) => { if (!top.contains(e.target)) setMenu(false); });
+
+  // Shown once the hero's buttons are out of sight, hidden again where buttons are on screen.
+  const dock = $('#dock');
+  const seen = new Set();
+  const dockIo = new IntersectionObserver((es) => {
+    es.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)));
+    const past = $('.hero .btns').getBoundingClientRect().bottom < 0;
+    dock.classList.toggle('show', past && seen.size === 0);
+  });
+  [$('.hero .btns'), $('.band'), $('#plus .price'), $('footer')].forEach((el) => dockIo.observe(el));
 
   // ---------- the latest release ----------
   let release = null;
