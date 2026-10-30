@@ -364,10 +364,11 @@ h3 { font-size: 20px; margin: 0 0 6px; font-weight: 600; line-height: 1.25; }
 }
 .price::before { content: ""; position: absolute; width: 360px; height: 360px; right: -140px; top: -160px; border-radius: 50%; background: radial-gradient(circle, rgba(127,209,174,.35), transparent 65%); animation: glow 8s ease-in-out infinite alternate; }
 @keyframes glow { to { transform: translate(-60px, 60px); } }
-.period { display: inline-flex; background: rgba(255,255,255,.1); border-radius: 12px; padding: 4px; position: relative; }
-.period button { font: inherit; font-weight: 500; color: #F4EFE6; background: transparent; border: 0; padding: 8px 16px; border-radius: 9px; cursor: pointer; position: relative; z-index: 1; }
-.period .knob { position: absolute; top: 4px; bottom: 4px; border-radius: 9px; background: var(--mint); transition: left .35s var(--ease), width .35s var(--ease); }
-.period button.on { color: var(--emerald); }
+.seg { display: inline-flex; background: rgba(255,255,255,.1); border-radius: 12px; padding: 4px; position: relative; }
+.seg button { font: inherit; font-weight: 500; color: #F4EFE6; background: transparent; border: 0; padding: 8px 16px; border-radius: 9px; cursor: pointer; position: relative; z-index: 1; }
+.seg .knob { position: absolute; top: 4px; bottom: 4px; border-radius: 9px; background: var(--mint); transition: left .35s var(--ease), width .35s var(--ease); }
+.seg .knob { left: 4px; width: 0; }
+.seg button.on { color: var(--emerald); }
 .amount { font: 600 64px/1 PlexMono, monospace; margin: 26px 0 4px; display: flex; align-items: baseline; gap: 10px; }
 .amount small { font: 400 18px Plex, sans-serif; opacity: .75; }
 .save { display: inline-block; background: var(--gold); color: var(--emerald); font-weight: 600; font-size: 13px; padding: 3px 9px; border-radius: 7px; transition: opacity .3s, transform .3s; }
@@ -375,7 +376,9 @@ h3 { font-size: 20px; margin: 0 0 6px; font-weight: 600; line-height: 1.25; }
 .price ul { list-style: none; padding: 0; margin: 22px 0; display: grid; gap: 8px; }
 .price li { padding-left: 26px; position: relative; } .price li::before { content: "✓"; position: absolute; left: 0; color: var(--mint); font-weight: 600; }
 .price .btn { --bg: var(--mint); --fg: var(--emerald); }
-.buy { margin-top: 18px; display: grid; grid-template-columns: 132px 1fr; gap: 18px; align-items: center; background: rgba(255,255,255,.07); border-radius: 16px; padding: 16px; }
+.pay { margin-top: 22px; }
+.pay button { font-size: 14px; padding: 6px 14px; }
+.buy { margin-top: 12px; display: grid; grid-template-columns: 132px 1fr; gap: 18px; align-items: center; background: rgba(255,255,255,.07); border-radius: 16px; padding: 16px; }
 .qr { width: 132px; height: 132px; border-radius: 12px; background: #fff; display: grid; place-items: center; overflow: hidden; }
 .qr img { width: 100%; height: 100%; object-fit: contain; }
 .qr .ph { color: #5F5E57; font-size: 12px; text-align: center; padding: 10px; }

@@ -272,8 +272,8 @@
       <ul class="pf reveal" id="pf"></ul>
     </div>
     <div class="price reveal" style="--delay:.15s">
-      <div class="period" id="period"><span class="knob"></span><button type="button" data-per="month" data-i18n="per_month">Месяц</button><button type="button" class="on" data-per="year" data-i18n="per_year">Год</button></div>
-      <div class="amount"><span id="amt">990</span><small id="amtl" data-i18n="pr_year">₽ в год</small></div>
+      <div class="seg period" id="period"><span class="knob"></span><button type="button" data-per="month" data-i18n="per_month">Месяц</button><button type="button" class="on" data-per="year" data-i18n="per_year">Год</button></div>
+      <div class="amount"><span id="amt">990</span><small id="amtl">₽ в год</small></div>
       <span class="save" id="save" data-i18n="pr_save">выгоднее на 45%</span>
       <ul>
         <li data-i18n="pr_trial"></li>
@@ -281,9 +281,10 @@
         <li data-i18n="pr_li2"></li>
         <li data-i18n="pr_li3"></li>
       </ul>
+      <div class="seg pay" id="pay"><span class="knob"></span><button type="button" class="on" data-pay="sbp" data-i18n="pay_sbp">СБП · ₽</button><button type="button" data-pay="ali" data-i18n="pay_ali">Alipay · ¥</button></div>
       <div class="buy">
         <div class="qr" id="qr"><div class="ph" data-i18n="qr_soon">QR-код появится здесь</div></div>
-        <div><b data-i18n="buy_t">Купить ключ</b><ol><li data-i18n="buy_1"></li><li data-i18n="buy_2"></li><li data-i18n="buy_3"></li></ol></div>
+        <div><b data-i18n="buy_t">Купить ключ</b><ol><li id="buy1" data-i18n="buy_1"></li><li data-i18n="buy_2"></li><li data-i18n="buy_3"></li></ol></div>
       </div>
     </div>
   </div>

@@ -44,6 +44,8 @@
     buildScreens();
     renderRelease();
     resetDemo();
+    renderPrice();
+    showQr();
   }
   sel.addEventListener('change', () => { store.set('lang', sel.value); applyLang(sel.value); });
 
@@ -239,25 +241,47 @@
   }));
   if (/Windows NT/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) $('[data-tab="windows"]').click();
 
-  // ---------- Plus: month / year ----------
-  const period = $('#period'), knob = $('.knob', period);
-  const PRICES = { month: [149, 'pr_month'], year: [990, 'pr_year'] };
-  function setPeriod(btn) {
-    $$('button', period).forEach((b) => b.classList.toggle('on', b === btn));
-    knob.style.left = btn.offsetLeft + 'px';
-    knob.style.width = btn.offsetWidth + 'px';
-    const [amount, label] = PRICES[btn.dataset.per];
-    countTo($('#amt'), Number($('#amt').textContent.replace(/\D/g, '')) || amount, amount, '');
-    const l = $('#amtl'); l.dataset.i18n = label; l.textContent = tr(label);
-    $('#save').classList.toggle('off', btn.dataset.per !== 'year');
+  // ---------- Plus: month / year, SBP in rubles / Alipay in yuan ----------
+  // A segmented control: the knob sits under the chosen button and follows it when the
+  // buttons change width (another language, fonts loading).
+  function seg(el, onPick) {
+    const knob = $('.knob', el);
+    const place = () => { const on = $('button.on', el); knob.style.left = on.offsetLeft + 'px'; knob.style.width = on.offsetWidth + 'px'; };
+    $$('button', el).forEach((b) => b.addEventListener('click', () => {
+      $$('button', el).forEach((x) => x.classList.toggle('on', x === b));
+      place();
+      onPick(b);
+    }));
+    new ResizeObserver(place).observe(el);
+    $$('button', el).forEach((b) => new ResizeObserver(place).observe(b));
   }
-  $$('button', period).forEach((b) => b.addEventListener('click', () => setPeriod(b)));
+  const PRICES = { month: { sbp: 149, ali: 15 }, year: { sbp: 990, ali: 99 } };
+  const CUR = { sbp: '₽', ali: '¥' };
+  let per = 'year', pay = 'sbp';
+  function renderPrice() {
+    const amount = PRICES[per][pay];
+    countTo($('#amt'), Number($('#amt').textContent.replace(/\D/g, '')) || amount, amount, '');
+    $('#amtl').textContent = tr(per === 'year' ? 'pr_year' : 'pr_month', [CUR[pay]]);
+    $('#save').classList.toggle('off', per !== 'year');
+    $('#buy1').textContent = tr(pay === 'ali' ? 'buy_1_ali' : 'buy_1');
+  }
+  seg($('#period'), (b) => { per = b.dataset.per; renderPrice(); });
+  seg($('#pay'), (b) => { pay = b.dataset.pay; renderPrice(); showQr(); });
 
-  // The SBP QR code: drop sbp-qr.png next to this page and it shows up.
-  const qr = new Image();
-  qr.alt = 'QR СБП';
-  qr.onload = () => { $('#qr').innerHTML = ''; $('#qr').append(qr); };
-  qr.src = 'sbp-qr.png';
+  // The QR codes: drop sbp-qr.png / alipay-qr.png next to this page and they show up.
+  const QR = { sbp: 'sbp-qr.png', ali: 'alipay-qr.png' };
+  const qrOk = {};
+  function showQr() {
+    const box = $('#qr');
+    if (qrOk[pay]) { box.innerHTML = ''; box.append(qrOk[pay]); return; }
+    box.innerHTML = `<div class="ph">${tr('qr_soon')}</div>`;
+  }
+  Object.entries(QR).forEach(([k, src]) => {
+    const img = new Image();
+    img.alt = 'QR ' + (k === 'ali' ? 'Alipay' : 'СБП');
+    img.onload = () => { qrOk[k] = img; if (k === pay) showQr(); };
+    img.src = src;
+  });
 
   // ---------- the latest release ----------
   let release = null;
@@ -297,6 +321,5 @@
   }
 
   applyLang(pickLang());
-  requestAnimationFrame(() => setPeriod($('[data-per="year"]', period)));
   loadRelease();
 })();
