@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сальдо — бюджет без сервера</title>
+<meta name="description" content="Траты записываются сами из уведомлений банков, Alipay и WeChat. Данные только у тебя: у приложения нет сервера. Android и Windows, бесплатно.">
+<meta name="theme-color" content="#0E3B34">
+<meta property="og:title" content="Сальдо — бюджет без сервера">
+<meta property="og:description" content="Кто ещё видит твои траты? Никто: у Сальдо нет сервера.">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="icon.svg" alt=""><span>Сальдо</span></a>
+    <nav class="nav">
+      <a href="#how" data-i18n="nav_how">Как работает</a>
+      <a href="#privacy" data-i18n="nav_privacy">Приватность</a>
+      <a href="#install" data-i18n="nav_install">Установка</a>
+      <a href="#plus" data-i18n="nav_plus">Плюс</a>
+    </nav>
+    <div class="tools">
+      <select class="lang" id="lang" aria-label="Language"></select>
+      <button class="iconbtn" id="theme" type="button" data-i18n-title="theme" title="Тема">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <a class="iconbtn" href="https://github.com/Dania201032/saldo" aria-label="GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 8.4 22.9c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.9 4.3 19 4.6 19 4.6c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ======================= HERO ======================= -->
+<section class="hero" id="download">
+  <div class="abacus" aria-hidden="true">
+    <div class="rod" style="top:14%"><i style="left:8%;--b:180px;--d:13s"></i><i class="g" style="left:12%;--b:220px;--d:15s;--s:-3s"></i><i style="left:70%;--a:-140px;--b:40px;--d:17s"></i></div>
+    <div class="rod" style="top:48%"><i class="y" style="left:3%;--b:260px;--d:19s"></i><i style="left:58%;--a:-200px;--b:60px;--d:14s;--s:-5s"></i><i class="g" style="left:85%;--a:-260px;--b:0px;--d:16s"></i></div>
+    <div class="rod" style="top:84%"><i class="g" style="left:20%;--b:160px;--d:18s;--s:-2s"></i><i style="left:44%;--a:-120px;--b:120px;--d:12s"></i><i class="y" style="left:90%;--a:-300px;--b:0px;--d:20s"></i></div>
+  </div>
+  <div class="wrap">
+    <div>
+      <div class="eyebrow"><span class="dot"></span><span data-i18n="eyebrow">Нет сервера · нет рекламы · открытый код</span></div>
+      <h1 id="h1">Кто ещё видит твои траты?</h1>
+      <p class="lead" data-i18n-html="hero_lead"><b>Никто.</b> Сальдо — бюджет, который ведёт себя сам и ничего не отправляет на сервер. Сервера у приложения просто нет.</p>
+      <div class="btns">
+        <a class="btn dl-android" href="https://github.com/Dania201032/saldo/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22a11.4 11.4 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 7 15.25zm10 0A1.25 1.25 0 1 1 18.25 14 1.25 1.25 0 0 1 17 15.25z"/></svg>
+          <span class="lbl"><span data-i18n="dl_android">Скачать для Android</span><small class="size-apk" data-i18n="free_note">Бесплатно · без аккаунта</small></span>
+        </a>
+        <a class="btn ghost dl-windows" href="https://github.com/Dania201032/saldo/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.4-1v7.1H3zm0 13l7.4 1v-7H3zm8.3 1.1L21 21v-8.4h-9.7zm0-15.2v7.2H21V3z"/></svg>
+          <span class="lbl"><span data-i18n="dl_windows">Для Windows</span><small class="size-win">Windows 10/11</small></span>
+        </a>
+        <a class="btn soon" href="https://www.rustore.ru/catalog/app/app.saldo" aria-disabled="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 16V8h4.5a2.5 2.5 0 0 1 0 5H8m4.5 0L16 16"/></svg>
+          <span class="lbl"><span data-i18n="dl_rustore">RuStore</span> <span class="badge" data-i18n="soon">скоро</span></span>
+        </a>
+      </div>
+      <div class="release" id="release"></div>
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <div class="chip c1">🖥️ <span data-i18n="chip1">Сервер</span> <b data-i18n="chip_none">нет</b></div>
+      <div class="chip c2">📡 <span data-i18n="chip2">Отправлено</span> <b data-i18n="chip_zero">0 Б</b></div>
+      <div class="chip c3">✍️ <span data-i18n="chip3">Руками</span> <b data-i18n="chip_never">не нужно</b></div>
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="sbar"><span class="mono" id="clock">9:41</span><span>●●● 5G ▮</span></div>
+          <div class="notif" id="notif">
+            <div class="ic" id="nIc">支</div>
+            <div><div class="h"><span id="nApp">Alipay</span><span data-i18n="demo_now">сейчас</span></div><div class="b" id="nBody">Оплата ¥38.00 · Luckin Coffee</div></div>
+          </div>
+          <div class="app">
+            <h4 data-i18n="demo_today">Можно потратить сегодня</h4>
+            <div class="today mono" id="today">1 240 ₽</div>
+            <div class="bar"><b id="mbar"></b></div>
+            <div class="barlbl"><span data-i18n="demo_month">Месяц</span><span><span class="mono" id="mleft">18 600 ₽</span> <span data-i18n="demo_left">осталось</span></span></div>
+            <ul class="list" id="list"></ul>
+          </div>
+          <div class="toast" id="toast">Записано: Кофе −390 ₽</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker" aria-hidden="true"><div id="ticker"></div></div>
+
+<!-- ======================= HOW ======================= -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="kicker" data-i18n="how_k">Как это работает</div>
+      <h2 data-i18n="how_t">Платишь как обычно — бюджет ведётся сам</h2>
+      <p data-i18n="how_p"></p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="vis"><div class="paywave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/></svg></div></div>
+        <h3 data-i18n="how1_t"></h3><p data-i18n="how1"></p>
+      </div>
+      <div class="step reveal" style="--delay:.12s">
+        <div class="vis"><div class="flyrow"><div></div><div></div><div></div></div></div>
+        <h3 data-i18n="how2_t"></h3><p data-i18n="how2"></p>
+      </div>
+      <div class="step reveal" style="--delay:.24s">
+        <div class="vis"><svg class="ring" viewBox="0 0 110 110"><circle class="bg" cx="55" cy="55" r="45"/><circle class="fg" cx="55" cy="55" r="45"/><text x="55" y="61" text-anchor="middle">62%</text></svg></div>
+        <h3 data-i18n="how3_t"></h3><p data-i18n="how3"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= FEATURES ======================= -->
+<section class="alt" id="features">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="kicker" data-i18n="feat_k">Возможности</div>
+      <h2 data-i18n="feat_t">Всё о деньгах — в одном месте</h2>
+    </div>
+    <div class="grid" id="feats"></div>
+  </div>
+</section>
+
+<!-- ======================= PRIVACY ======================= -->
+<section class="privacy" id="privacy">
+  <div class="wrap">
+    <div class="net reveal" id="net">
+      <svg viewBox="0 0 500 500" aria-hidden="true">
+        <g id="links"></g>
+        <circle class="pulse" cx="250" cy="250" r="90"/>
+        <circle class="pulse" cx="250" cy="250" r="90" style="animation-delay:1.5s"/>
+        <circle class="core" cx="250" cy="250" r="86"/>
+        <text class="zero" x="250" y="262" id="zero">0 Б</text>
+        <text class="zl" x="250" y="290" data-i18n="net_sent">отправлено</text>
+      </svg>
+    </div>
+    <div>
+      <div class="sec-h reveal" style="margin-bottom:0">
+        <div class="kicker" data-i18n="pv_k">Приватность</div>
+        <h2 data-i18n="pv_t">Проверь сам: сервера нет</h2>
+        <p data-i18n="pv_p"></p>
+      </div>
+      <div class="path reveal"><i data-i18n="pv_path">Где посмотреть:</i><span data-i18n="pv_settings">Настройки</span><i>→</i><span data-i18n="pv_screen">Приватность и интернет</span><i>→</i><span class="z" data-i18n="chip_zero">0 Б</span></div>
+      <ul class="checks" id="checks"></ul>
+      <p class="muted reveal" style="margin-top:18px;font-size:15px" data-i18n="pv_sync"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SCREENS ======================= -->
+<section class="alt" id="screens">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="kicker" data-i18n="shots_k">Как это выглядит</div>
+      <h2 data-i18n="shots_t">Спокойно, понятно, без лишнего</h2>
+      <p data-i18n="shots_p"></p>
+    </div>
+  </div>
+  <div class="wrap shots reveal" id="shots">
+    <figure class="shot">
+      <div class="phone"><div class="screen"><div class="mini">
+        <h4 class="muted" data-i18n="demo_today" style="margin:0;font-size:11px"></h4>
+        <div class="today mono" style="font-size:32px">1 240 ₽</div>
+        <div class="bar"><b style="width:62%"></b></div>
+        <ul class="list" id="miniList"></ul>
+      </div></div></div>
+      <figcaption><span data-i18n="s1"></span><span data-i18n="s1_s"></span></figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone"><div class="screen"><div class="mini">
+        <h5 data-i18n="m_spent"></h5>
+        <svg class="donut" viewBox="0 0 150 150" id="donut"></svg>
+        <div class="legend" id="legend"></div>
+      </div></div></div>
+      <figcaption><span data-i18n="s2"></span><span data-i18n="s2_s"></span></figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone"><div class="screen"><div class="mini">
+        <h5 data-i18n="m_runway"></h5>
+        <div class="mono" style="font-size:26px;font-weight:600;color:var(--good)" data-i18n="m_runway_d"></div>
+        <svg class="chart" viewBox="0 0 220 150" preserveAspectRatio="none">
+          <path class="ar" d="M0,30 L30,42 L60,38 L90,60 L120,58 L150,80 L180,92 L220,112 L220,150 L0,150Z"/>
+          <path class="ln" d="M0,30 L30,42 L60,38 L90,60 L120,58 L150,80 L180,92 L220,112"/>
+          <line class="zl2" x1="0" y1="140" x2="220" y2="140"/>
+        </svg>
+        <div class="legend">
+          <div><i style="background:var(--accent)"></i><span data-i18n="m_rent"></span><span class="mono">−25 000</span></div>
+          <div><i style="background:var(--gold)"></i><span data-i18n="m_stipend"></span><span class="mono">+12 000</span></div>
+          <div><i style="background:#9C8CD0"></i><span data-i18n="m_goal"></span><span class="mono">−60 000</span></div>
+        </div>
+      </div></div></div>
+      <figcaption><span data-i18n="s3"></span><span data-i18n="s3_s"></span></figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone"><div class="screen"><div class="mini">
+        <h5 class="mono" id="calMonth"></h5>
+        <div class="cal" id="cal"></div>
+        <div class="goal"><div style="display:flex;justify-content:space-between"><b data-i18n="m_goal"></b><span class="mono">38 000 / 60 000</span></div><div class="bar"><b style="width:63%"></b></div></div>
+        <div class="goal"><div style="display:flex;justify-content:space-between"><b data-i18n="m_goal2"></b><span class="mono">9 500 / 25 000</span></div><div class="bar"><b style="width:38%;background:var(--gold)"></b></div></div>
+      </div></div></div>
+      <figcaption><span data-i18n="s4"></span><span data-i18n="s4_s"></span></figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="phone"><div class="screen"><div class="mini">
+        <h5 data-i18n="pv_screen"></h5>
+        <div class="pv-big"><span class="muted" data-i18n="m_counter"></span><b>0 Б</b></div>
+        <div class="pv-row"><span data-i18n="m_offline"></span><span class="toggle"></span></div>
+        <div class="pv-row"><span data-i18n="m_log"></span><span class="muted">›</span></div>
+        <div class="pv-row"><span data-i18n="m_rates"></span><span class="mono muted">1.2 КБ</span></div>
+      </div></div></div>
+      <figcaption><span data-i18n="s5"></span><span data-i18n="s5_s"></span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= INSTALL ======================= -->
+<section id="install">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="kicker" data-i18n="in_k">Установка</div>
+      <h2 data-i18n="in_t">Пять минут — и бюджет ведётся сам</h2>
+      <p data-i18n="in_p"></p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="android" data-i18n="tab_android">Android</button>
+      <button role="tab" aria-selected="false" data-tab="windows" data-i18n="tab_windows">Windows</button>
+    </div>
+    <div class="pane" data-pane="android">
+      <div class="inst">
+        <ol class="ol">
+          <li><b data-i18n="a1_t"></b><p data-i18n="a1"></p></li>
+          <li><b data-i18n="a2_t"></b><p data-i18n="a2"></p></li>
+          <li><b data-i18n="a3_t"></b><p data-i18n="a3"></p></li>
+          <li><b data-i18n="a4_t"></b><p data-i18n="a4"></p></li>
+        </ol>
+        <div>
+          <div class="note"><h3 data-i18n="rs_t"></h3><p data-i18n="rs_1"></p><p data-i18n="rs_2"></p><p data-i18n="rs_3"></p></div>
+          <div class="reads"><h3 data-i18n="rd_t"></h3><p data-i18n="rd_1"></p><p class="no" data-i18n="rd_2"></p><p data-i18n="rd_3"></p></div>
+        </div>
+      </div>
+    </div>
+    <div class="pane" data-pane="windows" hidden>
+      <div class="inst">
+        <ol class="ol">
+          <li><b data-i18n="w1_t"></b><p data-i18n="w1"></p></li>
+          <li><b data-i18n="w2_t"></b><p data-i18n="w2"></p></li>
+          <li><b data-i18n="w3_t"></b><p data-i18n="w3"></p></li>
+        </ol>
+        <div class="reads"><h3 data-i18n="w_note_t"></h3><p data-i18n="w_note"></p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PLUS ======================= -->
+<section class="plus alt" id="plus">
+  <div class="wrap">
+    <div>
+      <div class="sec-h reveal" style="margin-bottom:24px">
+        <div class="kicker" data-i18n="pl_k">Сальдо Плюс</div>
+        <h2 data-i18n="pl_t">Основное — бесплатно навсегда</h2>
+        <p data-i18n="pl_p"></p>
+      </div>
+      <ul class="pf reveal" id="pf"></ul>
+    </div>
+    <div class="price reveal" style="--delay:.15s">
+      <div class="period" id="period"><span class="knob"></span><button type="button" data-per="month" data-i18n="per_month">Месяц</button><button type="button" class="on" data-per="year" data-i18n="per_year">Год</button></div>
+      <div class="amount"><span id="amt">990</span><small id="amtl" data-i18n="pr_year">₽ в год</small></div>
+      <span class="save" id="save" data-i18n="pr_save">выгоднее на 45%</span>
+      <ul>
+        <li data-i18n="pr_trial"></li>
+        <li data-i18n="pr_li1"></li>
+        <li data-i18n="pr_li2"></li>
+        <li data-i18n="pr_li3"></li>
+      </ul>
+      <div class="buy">
+        <div class="qr" id="qr"><div class="ph" data-i18n="qr_soon">QR-код появится здесь</div></div>
+        <div><b data-i18n="buy_t">Купить ключ</b><ol><li data-i18n="buy_1"></li><li data-i18n="buy_2"></li><li data-i18n="buy_3"></li></ol></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= BAND ======================= -->
+<section class="band">
+  <div class="wrap reveal">
+    <h2 data-i18n="band_t">Начни с одного файла — дальше бюджет ведётся сам</h2>
+    <div class="btns">
+      <a class="btn dl-android" href="https://github.com/Dania201032/saldo/releases/latest"><span data-i18n="dl_android">Скачать для Android</span></a>
+      <a class="btn ghost dl-windows" href="https://github.com/Dania201032/saldo/releases/latest"><span data-i18n="dl_windows">Для Windows</span></a>
+      <a class="btn soon" href="https://www.rustore.ru/catalog/app/app.saldo" aria-disabled="true"><span data-i18n="dl_rustore">RuStore</span> <span class="badge" data-i18n="soon">скоро</span></a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="icon.svg" alt=""><span>Сальдо</span></a>
+    <span data-i18n="ft_site">Сайт без cookies и счётчиков</span>
+    <a href="https://github.com/Dania201032/saldo" data-i18n="ft_code">Исходный код</a>
+    <a href="https://github.com/Dania201032/saldo/releases" data-i18n="ft_releases">Все версии</a>
+    <span class="sp">© 2026 Сальдо</span>
+  </div>
+</footer>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

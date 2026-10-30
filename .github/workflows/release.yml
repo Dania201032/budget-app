@@ -105,7 +105,7 @@ jobs:
             for a in $(gh release view "$TAG" --json assets --jq '.assets[].name'); do gh release delete-asset "$TAG" "$a" -y; done
             gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
           else
-            gh release create "$TAG" --title "Бюджет $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+            gh release create "$TAG" --title "Сальдо $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
           fi
           gh release upload "$TAG" "$APK"
 
