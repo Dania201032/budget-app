@@ -1,6 +1,7 @@
-// Сальдо — the buy page. No server here either: the page makes the order code itself (W + 5 digits),
-// the buyer pays by the QR with that code in the transfer comment, and the sales bot (saldo_shop)
-// recognises the code in the bank's e-mail or when the buyer opens it from the "Get the key" button.
+// Сальдо — the buy page. No server here either: the page makes the order code itself (W + 5 digits).
+// SBP: the code goes in the transfer comment and the sales bot (saldo_shop) finds it in the bank's e-mail.
+// Alipay transfers to a personal QR have no comment, so the code hides in the fen of the sum (99.37 ¥);
+// the buyer gets the key from the bot with a screenshot, or by a letter to the shop's mailbox.
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -14,6 +15,7 @@
   const CUR = { sbp: '₽', ali: '¥', stars: '⭐' };
   const QR = { sbp: 'sbp-qr.png', ali: 'alipay-qr.png' };
   const BOT = 'https://t.me/Saldobudget_bot';
+  const SHOP_MAIL = 'demintcev.dd@ya.ru';
   const mailRe = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -45,7 +47,7 @@
     store.set('theme', root.dataset.theme);
   });
   addEventListener('scroll', () => $('#top').classList.toggle('scrolled', scrollY > 8), { passive: true });
-  const botLang = () => ({ ru: 'ru', kk: 'ru', zh: 'zh' })[LANGS[li]] || 'en';
+  const botLang = () => LANGS[li];
 
   // ---------- the order ----------
   // One code per visit, kept across reloads of this tab so a buyer who already paid sees the same one.
@@ -60,6 +62,9 @@
     pay: CUR[q.get('pay')] ? q.get('pay') : null,
     to: store.get('buyTo') === 'mail' ? 'mail' : 'tg',
   };
+  // Same as aliAmount() in the bot: the fen are 01..99 from the order number.
+  const fen = String((Number(code.slice(1)) % 99) + 1).padStart(2, '0');
+  const sumOf = (plan, pay) => pay === 'ali' ? `${PRICES[plan].ali}.${fen} ¥` : `${PRICES[plan][pay]} ${CUR[pay]}`;
   const open = { stars: true, sbp: false, ali: false }; // SBP and Alipay open when their QR is on the site
   const qrImg = {};
   $('#mail').value = store.get('buyMail') || '';
@@ -81,7 +86,7 @@
     // The chosen way, or the language's usual one, once it is open; Stars until then.
     const pay = st.pay && open[st.pay] ? st.pay : defaultPay();
     const { plan, to } = st;
-    const amount = `${PRICES[plan][pay]} ${CUR[pay]}`;
+    const amount = sumOf(plan, pay);
     pick($('#s-plan'), 'plan', plan);
     pick($('#s-pay'), 'pay', pay);
     pick($('#s-to'), 'to', to);
@@ -116,13 +121,22 @@
     $('#saveQr').setAttribute('download', `saldo-${pay === 'ali' ? 'alipay' : 'sbp'}-qr.png`);
     $('#sum').textContent = amount;
     $('#comment').textContent = to === 'mail' && mailOk ? `${code} ${mail}` : code;
+    $('#commentRow').hidden = pay === 'ali';
+    $('#orderNote').textContent = tr(pay === 'ali' ? 'b_ali_note' : 'b_order_note');
 
+    const where = esc(mailOk ? mail : tr('b_to_mail').toLowerCase());
     const steps = [tr(pay === 'ali' ? 'b_ali1' : 'b_sbp1'), tr(pay === 'ali' ? 'b_ali2' : 'b_sbp2', [amount])];
     if (to === 'tg') steps.push(tr(pay === 'ali' ? 'b_tg_ali' : 'b_tg_sbp'));
-    else steps.push(tr(pay === 'ali' ? 'b_mail_ali' : 'b_mail_sbp', [esc(mailOk ? mail : tr('b_to_mail').toLowerCase())]));
+    else if (pay === 'ali') steps.push(tr('b_mail_ali', [where, SHOP_MAIL, code]));
+    else steps.push(tr('b_mail_sbp', [where]));
     $('#howpay').innerHTML = steps.map((s) => `<li>${s}</li>`).join('');
     $('#claimBtn').hidden = to !== 'tg';
     $('#claimBtn').href = `${BOT}?start=get_${code}_${plan}_${pay}_${botLang()}`;
+    // Alipay to e-mail: the buyer's letter to the shop's mailbox is what the bot reads.
+    $('#mailBtn').hidden = !(to === 'mail' && pay === 'ali');
+    const subject = `Saldo ${code} ${plan} ${amount.replace(' ¥', ' CNY')} ${botLang()} ${mailOk ? mail : ''}`.trim();
+    $('#mailBtn').href = `mailto:${SHOP_MAIL}?subject=${encodeURIComponent(subject)}`
+      + `&body=${encodeURIComponent(tr('b_mail_body', [amount, code, mailOk ? mail : '']))}`;
   }
 
   $$('#s-plan [data-plan]').forEach((b) => b.addEventListener('click', () => { st.plan = b.dataset.plan; render(); }));

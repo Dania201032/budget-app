@@ -355,6 +355,7 @@ h3 { font-size: 20px; margin: 0 0 6px; font-weight: 600; line-height: 1.25; }
 .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; margin-bottom: 26px; }
 .tabs button { font: inherit; font-weight: 500; border: 0; background: transparent; color: var(--muted); padding: 9px 18px; border-radius: 10px; cursor: pointer; transition: background .25s, color .25s; }
 .tabs button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+[hidden] { display: none !important; }
 .pane[hidden] { display: none; }
 .pane { animation: fade .5s var(--ease); }
 @keyframes fade { from { opacity: 0; transform: translateY(10px); } }
