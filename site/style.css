@@ -475,8 +475,9 @@ footer .sp { margin-left: auto; }
 .paycard.locked { opacity: .35; filter: blur(3px); pointer-events: none; user-select: none; }
 .qrcol { display: grid; gap: 8px; justify-items: center; }
 .qr { width: 132px; height: 132px; border-radius: 12px; background: #fff; display: grid; place-items: center; overflow: hidden; }
-.qr.big { width: 200px; height: 200px; border: 1px solid var(--rule); }
+.qr.big { width: 200px; height: auto; min-height: 200px; padding: 10px; border: 1px solid var(--rule); }
 .qr img { width: 100%; height: 100%; object-fit: contain; }
+.qr.big img { height: auto; } /* the QR keeps its own proportions (Alipay's card has the name under it) */
 .save-qr { font-size: 14px; color: var(--good); font-weight: 500; }
 .paydata { display: grid; gap: 12px; }
 .paydata .line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; color: var(--muted); font-size: 14.5px; }
@@ -501,6 +502,7 @@ footer .sp { margin-left: auto; }
   .opts.two .opt.row { grid-template-columns: 1fr; }
   .opts.two .opt.row .ico { width: 32px; height: 32px; border-radius: 10px; }
   .paycard { grid-template-columns: 1fr; gap: 16px; }
+  .qr.big { width: 240px; }
 }
 
 /* the download dock: phones only, after the hero */
